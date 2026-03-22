@@ -761,7 +761,12 @@ input[type="range"]:focus { box-shadow: none; }
     <div class="logo-ver">v2.0</div>
   </div>
   <div class="topbar-right">
+    <div id="sync-indicator" style="display:flex;align-items:center;gap:6px;font-family:var(--font-data);font-size:10px;color:var(--text3);">
+      <div id="sync-dot" style="width:7px;height:7px;border-radius:50%;background:var(--text3);"></div>
+      <span id="sync-txt">Sin Sheets</span>
+    </div>
     <span class="norm-chip">NOM-036-STPS-2018</span>
+    <button class="btn btn-outline" onclick="openSheetsConfig()" style="padding:6px 14px;font-size:12px;">⚙ Sheets</button>
     <button class="btn btn-outline" onclick="exportPDF()" style="padding:6px 14px;font-size:12px;">⬇ PDF</button>
   </div>
 </header>
@@ -960,74 +965,108 @@ input[type="range"]:focus { box-shadow: none; }
 </section>
 
 <!-- ════════════════════════════════════════
-  PAGE: ANÁLISIS DE VIDEO (MediaPipe)
+  PAGE: ANÁLISIS DE VIDEO — Anotación Manual
 ════════════════════════════════════════ -->
 <section id="page-video" class="page">
   <div class="page-header">
-    <div class="page-title">Análisis de <span>Video</span> — MediaPipe Pose</div>
-    <div class="page-sub">// Detección de esqueleto en tiempo real · vectores de riesgo por segmento</div>
+    <div class="page-title">Análisis de <span>Video</span> — Anotación Manual</div>
+    <div class="page-sub">// Coloca los puntos articulares · el sistema calcula ángulos y riesgo automáticamente</div>
+  </div>
+
+  <!-- SOURCE SELECTOR -->
+  <div class="card mb-md" id="sourceSelector">
+    <div class="card-title">Fuente de video</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <button class="btn btn-primary" id="btnSrcFile" onclick="selectSource('file')">📁 Cargar archivo</button>
+      <button class="btn btn-outline" id="btnSrcCamFront" onclick="selectSource('cam-front')">📷 Cámara frontal</button>
+      <button class="btn btn-outline" id="btnSrcCamBack" onclick="selectSource('cam-back')">📸 Cámara trasera</button>
+    </div>
+    <input type="file" id="videoInput" accept="video/*" style="display:none" onchange="loadVideo(event)">
+    <div id="camControls" style="display:none;margin-top:12px;gap:8px;flex-wrap:wrap;display:none;">
+      <button class="btn btn-danger" id="btnStopCam" onclick="stopCamera()">⏹ Detener cámara</button>
+      <button class="btn btn-outline" id="btnSnapCam" onclick="snapFromCamera()">📸 Capturar frame</button>
+    </div>
   </div>
 
   <div class="video-layout">
+    <!-- LEFT: canvas area -->
     <div>
       <!-- Upload zone -->
       <div class="upload-zone" id="uploadZone"
            onclick="document.getElementById('videoInput').click()"
            ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropFile(event)">
         <div class="upload-icon">🎥</div>
-        <div style="font-weight:700;font-size:15px;">Arrastra el video o haz clic</div>
+        <div style="font-weight:700;font-size:15px;">Arrastra el video o selecciona fuente arriba</div>
         <div class="text-muted text-mono">MP4 · MOV · AVI · WEBM</div>
-        <button class="btn btn-outline mt-sm" onclick="openVideoInput(event)">Seleccionar archivo</button>
-      </div>
-      <input type="file" id="videoInput" accept="video/*" style="display:none" onchange="loadVideo(event)">
-
-      <!-- Canvas -->
-      <div class="canvas-box" id="canvasBox">
-        <video id="videoEl" playsinline></video>
-        <canvas id="poseCanvas"></canvas>
       </div>
 
-      <!-- Controls -->
+      <!-- Canvas wrapper — video + annotation layer -->
+      <div class="canvas-box" id="canvasBox" style="cursor:crosshair;">
+        <video id="videoEl" playsinline style="display:block;width:100%;"></video>
+        <!-- annotation canvas sits on top -->
+        <canvas id="poseCanvas" style="position:absolute;top:0;left:0;width:100%;height:100%;"></canvas>
+      </div>
+
+      <!-- Video playback controls -->
       <div id="videoControls" style="display:none;">
         <div class="video-ctrl">
           <button class="ctrl-btn" id="playBtn" onclick="togglePlay()">▶</button>
           <div class="prog-bar" onclick="seekVideo(event)"><div class="prog-fill" id="progFill"></div></div>
           <span class="time-lbl" id="timeDisp">0:00</span>
-          <button class="ctrl-btn" id="overlayBtn" onclick="toggleOverlay()">👁 Ocultar</button>
-          <button class="ctrl-btn" onclick="captureFrame()">📸 Capturar</button>
-        </div>
-        <div class="pose-status mt-sm">
-          <div class="pose-dot" id="poseDot"></div>
-          <span id="poseStatusTxt">Iniciando MediaPipe Pose...</span>
+          <button class="ctrl-btn" onclick="stepFrame(-1)">⏮ -1f</button>
+          <button class="ctrl-btn" onclick="stepFrame(1)">+1f ⏭</button>
+          <button class="ctrl-btn" onclick="captureFrame()">📸</button>
+          <button class="ctrl-btn" id="overlayBtn" onclick="toggleOverlay()">👁</button>
         </div>
       </div>
 
-      <!-- Angle readouts -->
+      <!-- ANNOTATION TOOLBAR -->
+      <div id="annotToolbar" style="display:none;margin-top:10px;">
+        <div class="card" style="padding:14px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <div class="card-title" style="margin-bottom:0;">
+              Modo anotación — <span id="annotInstr" style="color:var(--accent);">Pausa el video y haz clic en las articulaciones</span>
+            </div>
+            <div style="display:flex;gap:6px;">
+              <button class="btn btn-outline" style="padding:5px 10px;font-size:11px;" onclick="clearAllPoints()">🗑 Limpiar</button>
+              <button class="btn btn-outline" style="padding:5px 10px;font-size:11px;" onclick="undoPoint()">↩ Deshacer</button>
+              <button class="btn btn-primary" style="padding:5px 12px;font-size:11px;" onclick="lockAndAnalyze()">✓ Analizar</button>
+            </div>
+          </div>
+
+          <!-- Joint selector buttons -->
+          <div style="display:flex;flex-wrap:wrap;gap:6px;" id="jointBtns">
+            <!-- rendered by JS -->
+          </div>
+
+          <!-- Progress -->
+          <div style="margin-top:10px;font-family:var(--font-data);font-size:10px;color:var(--text3);">
+            <span id="annotProgress">0/9 puntos colocados</span>
+            <span style="margin-left:12px;" id="trackingStatus"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Computed angles table -->
       <div class="card mt-md" id="angleCard" style="display:none;">
-        <div class="card-title">Ángulos articulares detectados (frame actual)</div>
-        <div class="g2">
-          <table class="angle-table" id="anglesLeft">
-            <tr><td class="a-name" colspan="2" style="color:var(--accent);font-weight:700;padding-bottom:4px;">Lado Izquierdo</td></tr>
-          </table>
-          <table class="angle-table" id="anglesRight">
-            <tr><td class="a-name" colspan="2" style="color:var(--blue);font-weight:700;padding-bottom:4px;">Lado Derecho</td></tr>
-          </table>
+        <div class="card-title">Ángulos articulares calculados</div>
+        <div id="anglesGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;">
         </div>
       </div>
     </div>
 
-    <!-- Sidebar -->
+    <!-- RIGHT: sidebar -->
     <div class="analysis-sidebar">
       <div class="card" style="padding:14px;">
         <div class="card-title" style="margin-bottom:8px;">Método activo</div>
-        <div style="font-weight:700;font-size:14px;" id="activeMethodName">Sin seleccionar</div>
-        <div style="font-size:11px;color:var(--text3);font-family:var(--font-data);" id="activeMethodSub">Selecciona en Describir + IA</div>
+        <div style="font-weight:700;font-size:14px;" id="activeMethodName">REBA</div>
+        <div style="font-size:11px;color:var(--text3);font-family:var(--font-data);" id="activeMethodSub">Rapid Entire Body Assessment</div>
       </div>
 
       <div class="score-hero">
         <div class="score-method" id="scoreMethod">PUNTUACIÓN REBA</div>
         <div class="score-num" id="scoreNum" style="color:var(--accent);">—</div>
-        <div class="score-interp" id="scoreInterp">Sin datos de análisis</div>
+        <div class="score-interp" id="scoreInterp">Coloca los puntos articulares</div>
       </div>
 
       <div class="risk-dist">
@@ -1040,7 +1079,19 @@ input[type="range"]:focus { box-shadow: none; }
       <div class="seg-panel">
         <div class="card-title" style="margin-bottom:10px;">Segmentos corporales</div>
         <div id="segsContainer">
-          <div class="text-muted text-mono" style="font-size:11px;text-align:center;padding:16px 0;">Carga un video</div>
+          <div class="text-muted text-mono" style="font-size:11px;text-align:center;padding:16px 0;">Coloca los puntos articulares</div>
+        </div>
+      </div>
+
+      <!-- Tracking info -->
+      <div class="card" style="padding:12px;background:var(--surface2);" id="trackingCard">
+        <div class="card-title" style="margin-bottom:8px;">Seguimiento de puntos</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.7;">
+          1. <strong>Pausa</strong> el video en la postura a evaluar<br>
+          2. Selecciona una articulación y haz <strong>clic</strong> sobre ella<br>
+          3. Repite para todas las articulaciones<br>
+          4. Presiona <strong>Analizar</strong> para calcular ángulos<br>
+          5. Avanza el video y repite si deseas otro frame
         </div>
       </div>
 
@@ -1618,6 +1669,44 @@ input[type="range"]:focus { box-shadow: none; }
   </div>
 </section>
 
+<!-- ══════ MODAL: GOOGLE SHEETS CONFIG ══════ -->
+<div id="sheets-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;backdrop-filter:blur(4px);align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border:1px solid var(--border2);border-radius:var(--r-xl);padding:28px;width:560px;max-width:95vw;position:relative;">
+    <div style="font-size:20px;font-weight:800;margin-bottom:4px;">Conectar Google Sheets</div>
+    <div style="font-family:var(--font-data);font-size:11px;color:var(--text3);margin-bottom:20px;">Sincroniza evaluaciones automáticamente con tu hoja de cálculo</div>
+
+    <!-- Steps -->
+    <div style="background:var(--surface2);border-radius:var(--r-md);padding:16px;margin-bottom:18px;font-size:13px;line-height:1.9;color:var(--text2);">
+      <div style="font-family:var(--font-data);font-size:9px;color:var(--accent);letter-spacing:2px;margin-bottom:8px;">PASOS DE CONFIGURACIÓN</div>
+      <div><span style="color:var(--accent);font-weight:700;">1.</span> Abre tu <a href="https://sheets.google.com" target="_blank" style="color:var(--accent);">Google Sheet</a> (o crea uno nuevo)</div>
+      <div><span style="color:var(--accent);font-weight:700;">2.</span> Ve a <strong>Extensiones → Apps Script</strong></div>
+      <div><span style="color:var(--accent);font-weight:700;">3.</span> Pega el contenido del archivo <code style="background:var(--surface3);padding:1px 5px;border-radius:3px;">google-apps-script/Code.gs</code></div>
+      <div><span style="color:var(--accent);font-weight:700;">4.</span> <strong>Implementar → Nueva implementación</strong> → Tipo: Aplicación web</div>
+      <div><span style="color:var(--accent);font-weight:700;">5.</span> "Ejecutar como: <strong>Yo</strong>" · "Acceso: <strong>Cualquier usuario</strong>" → Implementar</div>
+      <div><span style="color:var(--accent);font-weight:700;">6.</span> Copia la URL y pégala abajo ↓</div>
+    </div>
+
+    <div class="field" style="margin-bottom:14px;">
+      <span class="field-label">URL DE TU APPS SCRIPT (Web App URL)</span>
+      <input type="text" id="sheets-url-input" placeholder="https://script.google.com/macros/s/XXXXXX/exec"
+             style="font-family:var(--font-data);font-size:12px;"
+             oninput="validateSheetsUrl(this.value)">
+      <div id="url-validate-msg" style="font-family:var(--font-data);font-size:10px;margin-top:4px;color:var(--text3);">Ingresa la URL de tu Apps Script</div>
+    </div>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="saveSheetsConfig()">💾 Guardar y Conectar</button>
+      <button class="btn btn-outline" onclick="testSheetsConnection()">🔌 Probar conexión</button>
+      <button class="btn btn-outline" onclick="syncToSheets()">⬆ Subir datos locales</button>
+      <button class="btn btn-ghost" onclick="closeSheetsModal()">Cancelar</button>
+    </div>
+
+    <div id="sheets-test-result" style="margin-top:14px;display:none;padding:10px 14px;border-radius:var(--r-md);font-size:13px;"></div>
+
+    <button onclick="closeSheetsModal()" style="position:absolute;top:16px;right:16px;background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;">✕</button>
+  </div>
+</div>
+
 </main><!-- /content -->
 </div><!-- /app-shell -->
 
@@ -1639,6 +1728,8 @@ const APP = {
   lastREBA: {},
   lastAngles: {},
   charts: {},
+  sheetsUrl: localStorage.getItem('ergonom_sheets_url') || '',
+  syncStatus: 'idle', // idle | syncing | ok | error
 };
 
 // ══════════════════════════════════════════════
@@ -2289,331 +2380,581 @@ function clearDescForm() {
 // ══════════════════════════════════════════════
 let videoEl, canvas, ctx, poseDetector, showOverlay=true, animFrame=null, posePhase=0;
 
-const MP_JOINTS = {
-  nose:0, l_shoulder:11, r_shoulder:12,
-  l_elbow:13, r_elbow:14, l_wrist:15, r_wrist:16,
-  l_hip:23, r_hip:24, l_knee:25, r_knee:26,
-  l_ankle:27, r_ankle:28,
-};
+// ══════════════════════════════════════════════
+//  ANOTACIÓN MANUAL + CÁMARA
+// ══════════════════════════════════════════════
 
-const CONNECTIONS_MP = [
-  [11,12],[11,13],[13,15],[12,14],[14,16],
-  [11,23],[12,24],[23,24],[23,25],[25,27],[24,26],[26,28],
-  [0,11],[0,12],
+// Definición de articulaciones a anotar
+const JOINTS_DEF = [
+  { id:'head',       label:'Cabeza',       color:'#e879f9', seg:'neck'     },
+  { id:'neck',       label:'Cuello',       color:'#a78bfa', seg:'neck'     },
+  { id:'l_shoulder', label:'Hombro Izq',   color:'#38bdf8', seg:'shoulder' },
+  { id:'r_shoulder', label:'Hombro Der',   color:'#38bdf8', seg:'shoulder' },
+  { id:'l_elbow',    label:'Codo Izq',     color:'#34d399', seg:'elbow'    },
+  { id:'r_elbow',    label:'Codo Der',     color:'#34d399', seg:'elbow'    },
+  { id:'l_wrist',    label:'Muñeca Izq',   color:'#fbbf24', seg:'wrist'    },
+  { id:'r_wrist',    label:'Muñeca Der',   color:'#fbbf24', seg:'wrist'    },
+  { id:'mid_hip',    label:'Cadera',       color:'#fb923c', seg:'hip'      },
+  { id:'l_knee',     label:'Rodilla Izq',  color:'#f87171', seg:'knee'     },
+  { id:'r_knee',     label:'Rodilla Der',  color:'#f87171', seg:'knee'     },
 ];
 
-function angleBetween(A, B, C) {
-  if (!A||!B||!C) return null;
-  const vBA = [A[0]-B[0], A[1]-B[1]];
-  const vBC = [C[0]-B[0], C[1]-B[1]];
-  const dot = vBA[0]*vBC[0]+vBA[1]*vBC[1];
-  const mag = Math.hypot(...vBA)*Math.hypot(...vBC);
-  if (mag===0) return null;
-  return Math.round(Math.acos(Math.max(-1,Math.min(1,dot/mag)))*180/Math.PI);
-}
+// Conexiones entre joints para dibujar el esqueleto
+const SKEL_CONNECTIONS = [
+  ['head','neck'],
+  ['neck','l_shoulder'],['neck','r_shoulder'],
+  ['l_shoulder','r_shoulder'],
+  ['l_shoulder','l_elbow'],['l_elbow','l_wrist'],
+  ['r_shoulder','r_elbow'],['r_elbow','r_wrist'],
+  ['l_shoulder','mid_hip'],['r_shoulder','mid_hip'],
+  ['mid_hip','l_knee'],['mid_hip','r_knee'],
+];
 
-function jointRisk(angle, segment) {
-  if (angle===null) return 'low';
-  const thresholds = {
-    neck: [{max:20,r:'low'},{max:35,r:'med'},{max:999,r:'high'}],
-    trunk:[{max:20,r:'low'},{max:45,r:'med'},{max:999,r:'high'}],
-    shoulder:[{max:45,r:'low'},{max:90,r:'med'},{max:999,r:'high'}],
-    elbow:[{max:60,r:'low'},{max:100,r:'low'},{max:999,r:'med'}],
-    wrist:[{max:15,r:'low'},{max:30,r:'med'},{max:999,r:'high'}],
-    hip:  [{max:20,r:'low'},{max:45,r:'med'},{max:999,r:'high'}],
-    knee: [{max:30,r:'low'},{max:60,r:'med'},{max:999,r:'high'}],
-  };
-  const t = thresholds[segment] || [{max:30,r:'low'},{max:60,r:'med'},{max:999,r:'high'}];
-  return t.find(x => angle <= x.max)?.r || 'high';
-}
+// Umbrales de riesgo por segmento
+const RISK_THRESHOLDS = {
+  neck:     [{max:20,r:'low'},{max:35,r:'med'},{max:999,r:'high'}],
+  trunk:    [{max:20,r:'low'},{max:45,r:'med'},{max:999,r:'high'}],
+  shoulder: [{max:45,r:'low'},{max:90,r:'med'},{max:999,r:'high'}],
+  elbow:    [{max:90,r:'low'},{max:120,r:'med'},{max:999,r:'high'}],
+  wrist:    [{max:15,r:'low'},{max:30,r:'med'},{max:999,r:'high'}],
+  hip:      [{max:20,r:'low'},{max:45,r:'med'},{max:999,r:'high'}],
+  knee:     [{max:30,r:'low'},{max:60,r:'med'},{max:999,r:'high'}],
+};
 
 const RISK_HEX = { low:'#22c55e', med:'#f59e0b', high:'#ef4444' };
 
-function drawSkeleton(lm, w, h) {
-  if (!lm || !lm.length) return;
-  const pts = {};
-  lm.forEach((p, i) => {
-    if (p.visibility > 0.3) pts[i] = [p.x*w, p.y*h];
-  });
+// Estado del anotador
+const ANNOT = {
+  points: {},          // { joint_id: {x, y} } — coordenadas en canvas real
+  activeJoint: null,   // joint_id seleccionado para colocar
+  locked: false,       // true = análisis completado
+  cameraStream: null,  // MediaStream activo
+  mode: 'video',       // 'video' | 'camera'
+  renderLoop: null,
+};
 
-  // Connections
-  CONNECTIONS_MP.forEach(([a,b]) => {
-    if (!pts[a]||!pts[b]) return;
-    const ang = angleBetween(pts[a], pts[b], pts[a]); // dummy
-    ctx.beginPath();
-    ctx.moveTo(pts[a][0], pts[a][1]);
-    ctx.lineTo(pts[b][0], pts[b][1]);
-    ctx.strokeStyle = '#4ade8088';
-    ctx.lineWidth = 2.5;
-    ctx.globalAlpha = 0.8;
-    ctx.stroke();
-  });
+let videoEl, canvas, ctx, showOverlay = true;
 
-  // Joints with risk color
-  const angles = computeAngles(pts);
-  Object.values(MP_JOINTS).forEach(i => {
-    if (!pts[i]) return;
-    const [x,y] = pts[i];
-    const segMap = {11:'shoulder',12:'shoulder',13:'elbow',14:'elbow',15:'wrist',16:'wrist',23:'hip',24:'hip',25:'knee',26:'knee',27:'knee',28:'knee',0:'neck'};
-    const seg = segMap[i] || 'elbow';
-    const angVal = angles[seg]?.l || angles[seg]?.r || 90;
-    const risk = jointRisk(angVal, seg);
-    const col = RISK_HEX[risk];
-
-    ctx.beginPath();
-    ctx.arc(x,y,10,0,Math.PI*2);
-    ctx.fillStyle = col+'33';
-    ctx.globalAlpha=1;
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.arc(x,y,5,0,Math.PI*2);
-    ctx.fillStyle = col;
-    ctx.fill();
-    ctx.strokeStyle='rgba(0,0,0,0.4)';
-    ctx.lineWidth=1;
-    ctx.stroke();
-  });
-
-  // Angle labels
-  ctx.font = 'bold 10px "Space Mono", monospace';
-  if (pts[13] && angles.elbow?.l!=null) { ctx.fillStyle=RISK_HEX[jointRisk(angles.elbow.l,'elbow')]; ctx.fillText(`${angles.elbow.l}°`,pts[13][0]+8,pts[13][1]-4); }
-  if (pts[14] && angles.elbow?.r!=null) { ctx.fillStyle=RISK_HEX[jointRisk(angles.elbow.r,'elbow')]; ctx.fillText(`${angles.elbow.r}°`,pts[14][0]+8,pts[14][1]-4); }
-  if (pts[11] && angles.shoulder?.l!=null) { ctx.fillStyle=RISK_HEX[jointRisk(angles.shoulder.l,'shoulder')]; ctx.fillText(`${angles.shoulder.l}°`,pts[11][0]-30,pts[11][1]-8); }
-  if (pts[0]  && angles.neck!=null)  { ctx.fillStyle=RISK_HEX[jointRisk(angles.neck,'neck')];  ctx.fillText(`${angles.neck}°`, pts[0][0]+8, pts[0][1]-4); }
-
-  ctx.globalAlpha=1;
-  updateSidebarsFromPose(angles, lm);
+// ─── Inicializar botones de joints ───────────────
+function initJointButtons() {
+  const wrap = document.getElementById('jointBtns');
+  if (!wrap) return;
+  wrap.innerHTML = JOINTS_DEF.map(j => `
+    <button id="jbtn-${j.id}"
+      onclick="selectJoint('${j.id}')"
+      style="
+        padding:5px 10px; border-radius:6px; font-size:11px; font-weight:700;
+        cursor:pointer; border:2px solid ${j.color}33;
+        background:${j.color}15; color:${j.color};
+        transition:all 0.15s; font-family:var(--font-data);
+      ">
+      ${ANNOT.points[j.id] ? '✓ ' : ''}${j.label}
+    </button>
+  `).join('');
 }
 
-function computeAngles(pts) {
-  const angles = {};
-  // Neck (nose relative to shoulders midpoint)
-  if (pts[0]&&pts[11]&&pts[12]) {
-    const sh = [(pts[11][0]+pts[12][0])/2, (pts[11][1]+pts[12][1])/2];
-    const up = [sh[0], sh[1]-100];
-    angles.neck = angleBetween(pts[0], sh, up);
-  }
-  // Trunk
-  if (pts[11]&&pts[23]&&pts[25]) {
-    angles.trunk = angleBetween(pts[11],pts[23],[pts[23][0],pts[23][1]-100]);
-  }
-  // Elbows
-  if (pts[11]&&pts[13]&&pts[15]) angles.elbow = { l: angleBetween(pts[11],pts[13],pts[15]) };
-  if (pts[12]&&pts[14]&&pts[16]) angles.elbow = { ...angles.elbow, r: angleBetween(pts[12],pts[14],pts[16]) };
-  // Shoulders
-  if (pts[23]&&pts[11]&&pts[13]) angles.shoulder = { l: angleBetween(pts[23],pts[11],pts[13]) };
-  if (pts[24]&&pts[12]&&pts[14]) angles.shoulder = { ...angles.shoulder, r: angleBetween(pts[24],pts[12],pts[14]) };
-  // Hips & Knees
-  if (pts[11]&&pts[23]&&pts[25]) angles.hip = { l: angleBetween(pts[11],pts[23],pts[25]) };
-  if (pts[23]&&pts[25]&&pts[27]) angles.knee = { l: angleBetween(pts[23],pts[25],pts[27]) };
-
-  APP.lastAngles = angles;
-  return angles;
+function selectJoint(id) {
+  ANNOT.activeJoint = id;
+  ANNOT.locked = false;
+  // Highlight active button
+  document.querySelectorAll('[id^="jbtn-"]').forEach(b => b.style.outline = 'none');
+  const btn = document.getElementById('jbtn-'+id);
+  if (btn) btn.style.outline = '2px solid white';
+  const j = JOINTS_DEF.find(x=>x.id===id);
+  document.getElementById('annotInstr').textContent =
+    `Haz clic sobre: ${j?.label || id}`;
 }
 
-function updateSidebarsFromPose(angles, lm) {
-  const segs = [
-    { n:'Cuello',    a: angles.neck,       seg:'neck'     },
-    { n:'Tronco',    a: angles.trunk,      seg:'trunk'    },
-    { n:'Hombro Izq',a: angles.shoulder?.l,seg:'shoulder' },
-    { n:'Codo Izq',  a: angles.elbow?.l,   seg:'elbow'    },
-    { n:'Hombro Der',a: angles.shoulder?.r,seg:'shoulder' },
-    { n:'Codo Der',  a: angles.elbow?.r,   seg:'elbow'    },
-    { n:'Cadera Izq',a: angles.hip?.l,     seg:'hip'      },
-    { n:'Rodilla Izq',a: angles.knee?.l,   seg:'knee'     },
-  ];
-
-  const cont = document.getElementById('segsContainer');
-  cont.innerHTML = segs.filter(s=>s.a!=null).map(s => {
-    const r = jointRisk(s.a, s.seg);
-    const col = getColor(r);
-    const pct = Math.min(s.a, 90) / 90 * 100;
-    return `<div class="seg-row">
-      <span class="seg-name">${s.n}</span>
-      <div class="seg-bar"><div class="seg-fill" style="width:${pct}%;background:${col}"></div></div>
-      <span class="seg-ang" style="color:${col}">${s.a}°</span>
-    </div>`;
-  }).join('') || '<div class="text-muted text-mono" style="font-size:11px;text-align:center;padding:12px;">Sin datos de pose</div>';
-
-  // Angles table
-  const la = document.getElementById('anglesLeft');
-  const ra = document.getElementById('anglesRight');
-  if (la) la.innerHTML = `<tr><td class="a-name" colspan="2" style="color:var(--accent);font-weight:700;padding-bottom:4px;">Lado Izquierdo</td></tr>
-    ${angles.shoulder?.l!=null?`<tr><td class="a-name">Hombro</td><td class="a-val" style="color:${RISK_HEX[jointRisk(angles.shoulder.l,'shoulder')]}">${angles.shoulder.l}°</td></tr>`:''}
-    ${angles.elbow?.l!=null?`<tr><td class="a-name">Codo</td><td class="a-val" style="color:${RISK_HEX[jointRisk(angles.elbow.l,'elbow')]}">${angles.elbow.l}°</td></tr>`:''}
-    ${angles.hip?.l!=null?`<tr><td class="a-name">Cadera</td><td class="a-val" style="color:${RISK_HEX[jointRisk(angles.hip.l,'hip')]}">${angles.hip.l}°</td></tr>`:''}
-    ${angles.knee?.l!=null?`<tr><td class="a-name">Rodilla</td><td class="a-val" style="color:${RISK_HEX[jointRisk(angles.knee.l,'knee')]}">${angles.knee.l}°</td></tr>`:''}`;
-  if (ra) ra.innerHTML = `<tr><td class="a-name" colspan="2" style="color:var(--blue);font-weight:700;padding-bottom:4px;">Lado Derecho</td></tr>
-    ${angles.shoulder?.r!=null?`<tr><td class="a-name">Hombro</td><td class="a-val" style="color:${RISK_HEX[jointRisk(angles.shoulder.r,'shoulder')]}">${angles.shoulder.r}°</td></tr>`:''}
-    ${angles.elbow?.r!=null?`<tr><td class="a-name">Codo</td><td class="a-val" style="color:${RISK_HEX[jointRisk(angles.elbow.r,'elbow')]}">${angles.elbow.r}°</td></tr>`:''}`;
-
-  // Update REBA score from real angles
-  if (angles.trunk!=null && angles.neck!=null) {
-    const fake = {
-      trunkAngle: angles.trunk||0, neckAngle: angles.neck||0,
-      upperArmAngle: angles.shoulder?.l||0, forearmAngle: angles.elbow?.l||90,
-      load:0, coupling:0, activity:0,
-    };
-    document.getElementById('s-trunk').value = fake.trunkAngle;
-    document.getElementById('s-neck').value  = fake.neckAngle;
-    document.getElementById('s-arm').value   = fake.upperArmAngle;
-    calcREBA();
-    const score = +document.getElementById('reba-score').textContent;
-    document.getElementById('scoreNum').textContent  = score;
-    const risk = getRiskFromScore('REBA', score);
-    document.getElementById('scoreNum').style.color  = getColor(risk.c);
-    document.getElementById('scoreInterp').textContent = `${risk.l} — ${risk.a}`;
-
-    const low=40, med=35, high=25;
-    ['low','med','high'].forEach(r => {
-      const v = {low,med,high}[r];
-      document.getElementById('rf-'+r).style.width = v+'%';
-      document.getElementById('rp-'+r).textContent = v+'%';
-    });
+// ─── Fuente de video ─────────────────────────────
+function selectSource(src) {
+  if (src === 'file') {
+    document.getElementById('videoInput').click();
+  } else {
+    startCamera(src === 'cam-back' ? 'environment' : 'user');
   }
-}
-
-function openVideoInput(e) {
-  if (e) e.stopPropagation();
-  document.getElementById('videoInput').click();
 }
 
 function loadVideo(event) {
   const file = event.target.files[0];
   if (!file) return;
+  stopCamera(); // para cámara si estaba activa
+
   videoEl = document.getElementById('videoEl');
   canvas  = document.getElementById('poseCanvas');
   ctx     = canvas.getContext('2d');
+  ANNOT.mode = 'video';
 
   videoEl.src = URL.createObjectURL(file);
   videoEl.load();
+  videoEl.style.display = 'block';
 
   document.getElementById('uploadZone').style.display = 'none';
   document.getElementById('canvasBox').classList.add('visible');
   document.getElementById('videoControls').style.display = 'block';
-  document.getElementById('angleCard').style.display = 'block';
+  document.getElementById('annotToolbar').style.display = 'block';
 
   videoEl.onloadedmetadata = () => {
-    canvas.width  = videoEl.videoWidth;
-    canvas.height = videoEl.videoHeight;
+    canvas.width  = videoEl.videoWidth  || videoEl.offsetWidth;
+    canvas.height = videoEl.videoHeight || videoEl.offsetHeight;
     APP.videoLoaded = true;
-    initMediaPipe();
-    startSimFallback();
+    clearAllPoints();
+    startRenderLoop();
   };
+
   videoEl.ontimeupdate = () => {
-    const pct = (videoEl.currentTime/videoEl.duration)*100;
-    document.getElementById('progFill').style.width = pct+'%';
-    const m=Math.floor(videoEl.currentTime/60), s=Math.floor(videoEl.currentTime%60).toString().padStart(2,'0');
-    document.getElementById('timeDisp').textContent = `${m}:${s}`;
+    const pct = (videoEl.currentTime / videoEl.duration) * 100;
+    const fill = document.getElementById('progFill');
+    if (fill) fill.style.width = pct + '%';
+    const m = Math.floor(videoEl.currentTime/60);
+    const s = Math.floor(videoEl.currentTime%60).toString().padStart(2,'0');
+    const td = document.getElementById('timeDisp');
+    if (td) td.textContent = `${m}:${s}`;
   };
+
+  // Click en canvas → colocar punto
+  canvas.onclick = handleCanvasClick;
 }
 
-function initMediaPipe() {
+// ─── CÁMARA ──────────────────────────────────────
+async function startCamera(facing) {
   try {
-    const dot = document.getElementById('poseDot');
-    const txt = document.getElementById('poseStatusTxt');
-
-    if (typeof Pose === 'undefined') {
-      txt.textContent = 'MediaPipe no disponible — usando simulación';
-      dot.classList.add('error');
-      return;
-    }
-
-    poseDetector = new Pose({
-      locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${f}`,
-    });
-    poseDetector.setOptions({ modelComplexity:1, smoothLandmarks:true, minDetectionConfidence:0.5, minTrackingConfidence:0.5 });
-    poseDetector.onResults(res => {
-      if (!ctx) return;
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      if (showOverlay && res.poseLandmarks) {
-        drawSkeleton(res.poseLandmarks, canvas.width, canvas.height);
-        dot.classList.add('active');
-        txt.textContent = 'MediaPipe Pose activo — detectando esqueleto';
-      }
+    stopCamera();
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: facing },
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+      },
+      audio: false,
     });
 
-    const cam = new Camera(videoEl, {
-      onFrame: async () => { if (poseDetector) await poseDetector.send({ image: videoEl }); },
-      width: canvas.width, height: canvas.height,
-    });
-    cam.start();
-    dot.classList.add('active');
-    txt.textContent = 'MediaPipe Pose cargando...';
-  } catch(e) {
-    document.getElementById('poseStatusTxt').textContent = 'Simulación de pose activa';
+    ANNOT.cameraStream = stream;
+    ANNOT.mode = 'camera';
+
+    videoEl = document.getElementById('videoEl');
+    canvas  = document.getElementById('poseCanvas');
+    ctx     = canvas.getContext('2d');
+
+    videoEl.srcObject = stream;
+    videoEl.style.display = 'block';
+    videoEl.play();
+
+    videoEl.onloadedmetadata = () => {
+      canvas.width  = videoEl.videoWidth;
+      canvas.height = videoEl.videoHeight;
+      APP.videoLoaded = true;
+    };
+
+    document.getElementById('uploadZone').style.display = 'none';
+    document.getElementById('canvasBox').classList.add('visible');
+    document.getElementById('annotToolbar').style.display = 'block';
+    document.getElementById('videoControls').style.display = 'none';
+    document.getElementById('camControls').style.display = 'flex';
+
+    clearAllPoints();
+    startRenderLoop();
+
+    // Label de cámara activa
+    document.getElementById('annotInstr').textContent =
+      facing === 'environment' ? '📸 Cámara trasera activa — selecciona articulación y haz clic' : '📷 Cámara frontal activa';
+
+  } catch(err) {
+    alert('No se pudo acceder a la cámara: ' + err.message +
+          '\nVerifica que el sitio tenga permisos de cámara (HTTPS requerido).');
   }
 }
 
-// Fallback simulado si MediaPipe no carga
-let simPhase = 0;
-function startSimFallback() {
-  if (poseDetector) return;
-  const simLoop = () => {
-    animFrame = requestAnimationFrame(simLoop);
-    if (!videoEl||!canvas||!ctx||videoEl.paused||!showOverlay) return;
-    simPhase += 0.025;
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    const w=canvas.width, h=canvas.height, cx=w/2;
-    const sw = Math.sin(simPhase)*0.04;
-    const lf = Math.abs(Math.sin(simPhase))*0.07;
-
-    const pts = {
-      0:[cx,h*0.11], 11:[cx-w*0.10,h*0.24], 12:[cx+w*0.10,h*0.24],
-      13:[cx-w*(0.17+sw),h*(0.37-lf)], 14:[cx+w*(0.17-sw),h*(0.37-lf*0.5)],
-      15:[cx-w*(0.18+sw*2),h*(0.52-lf*1.5)], 16:[cx+w*(0.19-sw),h*(0.50-lf)],
-      23:[cx-w*0.07,h*0.54], 24:[cx+w*0.07,h*0.54],
-      25:[cx-w*0.08,h*0.72], 26:[cx+w*0.08,h*0.72],
-      27:[cx-w*0.09,h*0.88], 28:[cx+w*0.09,h*0.88],
-    };
-
-    CONNECTIONS_MP.forEach(([a,b]) => {
-      if (!pts[a]||!pts[b]) return;
-      const riskSegs = [13,14,15,16].includes(a)||[13,14,15,16].includes(b);
-      ctx.beginPath(); ctx.moveTo(pts[a][0],pts[a][1]); ctx.lineTo(pts[b][0],pts[b][1]);
-      ctx.strokeStyle = riskSegs ? (lf>0.04?'#ef444488':'#f59e0b88') : '#22c55e88';
-      ctx.lineWidth=2.5; ctx.globalAlpha=0.85; ctx.stroke();
-    });
-
-    Object.entries(pts).forEach(([i,[x,y]])=>{
-      const rr = [13,14,15,16].includes(+i);
-      const col = rr ? (lf>0.04?'#ef4444':'#f59e0b') : '#22c55e';
-      ctx.beginPath(); ctx.arc(x,y,10,0,Math.PI*2); ctx.fillStyle=col+'33'; ctx.globalAlpha=1; ctx.fill();
-      ctx.beginPath(); ctx.arc(x,y,5,0,Math.PI*2); ctx.fillStyle=col; ctx.fill();
-    });
-
-    ctx.globalAlpha=1;
-    ctx.font='bold 10px "Space Mono",monospace';
-    const ea = Math.round(90+Math.sin(simPhase)*35);
-    const na = Math.round(15+Math.abs(Math.sin(simPhase))*20);
-    ctx.fillStyle=ea>90?'#ef4444':'#f59e0b'; ctx.fillText(`${ea}°`,pts[13][0]+8,pts[13][1]-4);
-    ctx.fillStyle=na>20?'#ef4444':'#22c55e'; ctx.fillText(`${na}°`,pts[0][0]+8,pts[0][1]-4);
-
-    const simAngles = { neck:na, trunk:10, elbow:{l:ea,r:ea-10}, shoulder:{l:90+Math.sin(simPhase)*20,r:70} };
-    updateSidebarsFromPose(simAngles, []);
-    document.getElementById('poseStatusTxt').textContent = 'Simulación de pose activa (carga video MP4 para detección real)';
-  };
-  simLoop();
+function stopCamera() {
+  if (ANNOT.cameraStream) {
+    ANNOT.cameraStream.getTracks().forEach(t => t.stop());
+    ANNOT.cameraStream = null;
+  }
+  const ve = document.getElementById('videoEl');
+  if (ve) { ve.srcObject = null; ve.pause(); }
+  const cc = document.getElementById('camControls');
+  if (cc) cc.style.display = 'none';
 }
 
+function snapFromCamera() {
+  // Congela el frame de cámara para anotar cómodamente
+  if (!videoEl || ANNOT.mode !== 'camera') return;
+  const snap = document.createElement('canvas');
+  snap.width  = canvas.width;
+  snap.height = canvas.height;
+  snap.getContext('2d').drawImage(videoEl, 0, 0);
+  // Congelar imagen en el video element usando un blob
+  snap.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    videoEl.srcObject = null;
+    videoEl.src = url;
+    videoEl.play();
+    document.getElementById('annotInstr').textContent = 'Frame capturado — ahora coloca los puntos articulares';
+  });
+}
+
+// ─── RENDER LOOP ────────────────────────────────
+function startRenderLoop() {
+  if (ANNOT.renderLoop) cancelAnimationFrame(ANNOT.renderLoop);
+  const loop = () => {
+    ANNOT.renderLoop = requestAnimationFrame(loop);
+    drawAnnotations();
+  };
+  loop();
+}
+
+// ─── DIBUJAR ANOTACIONES ─────────────────────────
+function drawAnnotations() {
+  if (!ctx || !canvas) return;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (!showOverlay) return;
+
+  const pts = ANNOT.points;
+
+  // Conexiones del esqueleto
+  SKEL_CONNECTIONS.forEach(([a, b]) => {
+    if (!pts[a] || !pts[b]) return;
+    const jA = JOINTS_DEF.find(j=>j.id===a);
+    const jB = JOINTS_DEF.find(j=>j.id===b);
+    const risk = computeSegmentRisk(a, b);
+    const col  = RISK_HEX[risk] || '#4ade80';
+
+    // Línea principal
+    ctx.beginPath();
+    ctx.moveTo(pts[a].x, pts[a].y);
+    ctx.lineTo(pts[b].x, pts[b].y);
+    ctx.strokeStyle = col + 'cc';
+    ctx.lineWidth   = 3;
+    ctx.globalAlpha = 0.9;
+    ctx.stroke();
+
+    // Flecha en el medio
+    drawArrowMid(pts[a], pts[b], col);
+  });
+
+  // Puntos articulares
+  JOINTS_DEF.forEach(j => {
+    if (!pts[j.id]) return;
+    const { x, y } = pts[j.id];
+    const isActive = ANNOT.activeJoint === j.id;
+
+    // Halo exterior
+    ctx.beginPath();
+    ctx.arc(x, y, isActive ? 18 : 12, 0, Math.PI*2);
+    ctx.fillStyle = j.color + '25';
+    ctx.globalAlpha = 1;
+    ctx.fill();
+
+    // Círculo relleno
+    ctx.beginPath();
+    ctx.arc(x, y, isActive ? 9 : 7, 0, Math.PI*2);
+    ctx.fillStyle = j.color;
+    ctx.globalAlpha = 0.95;
+    ctx.fill();
+
+    // Borde
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+    ctx.lineWidth   = 1.5;
+    ctx.stroke();
+
+    // Etiqueta
+    ctx.font = `bold ${isActive?11:10}px "Space Mono",monospace`;
+    ctx.fillStyle   = '#fff';
+    ctx.globalAlpha = 0.9;
+    ctx.shadowColor = 'rgba(0,0,0,0.8)';
+    ctx.shadowBlur  = 3;
+    ctx.fillText(j.label, x + 11, y - 6);
+    ctx.shadowBlur = 0;
+
+    // Ángulo calculado junto a la articulación
+    const angle = getJointAngle(j.id);
+    if (angle !== null) {
+      const risk = jointRiskFn(angle, j.seg);
+      ctx.font      = `bold 11px "Space Mono",monospace`;
+      ctx.fillStyle = RISK_HEX[risk];
+      ctx.shadowColor = 'rgba(0,0,0,0.9)';
+      ctx.shadowBlur  = 4;
+      ctx.fillText(`${angle}°`, x + 11, y + 10);
+      ctx.shadowBlur = 0;
+    }
+
+    ctx.globalAlpha = 1;
+  });
+
+  // Cursor crosshair si hay joint activo pero sin punto
+  if (ANNOT.activeJoint && !pts[ANNOT.activeJoint]) {
+    const j = JOINTS_DEF.find(x=>x.id===ANNOT.activeJoint);
+    if (j) {
+      ctx.font      = 'bold 12px "Space Mono",monospace';
+      ctx.fillStyle = j.color;
+      ctx.fillText(`← Haz clic en: ${j.label}`, 10, canvas.height - 12);
+    }
+  }
+}
+
+function drawArrowMid(A, B, color) {
+  const mx = (A.x + B.x) / 2;
+  const my = (A.y + B.y) / 2;
+  const angle = Math.atan2(B.y - A.y, B.x - A.x);
+  const size  = 7;
+  ctx.beginPath();
+  ctx.moveTo(mx, my);
+  ctx.lineTo(mx - size * Math.cos(angle - 0.4), my - size * Math.sin(angle - 0.4));
+  ctx.lineTo(mx - size * Math.cos(angle + 0.4), my - size * Math.sin(angle + 0.4));
+  ctx.closePath();
+  ctx.fillStyle   = color + 'cc';
+  ctx.globalAlpha = 0.8;
+  ctx.fill();
+}
+
+// ─── CLICK EN CANVAS → colocar punto ────────────
+function handleCanvasClick(e) {
+  if (!ANNOT.activeJoint) {
+    // Si no hay joint seleccionado, selecciona el primero sin colocar
+    const missing = JOINTS_DEF.find(j => !ANNOT.points[j.id]);
+    if (missing) selectJoint(missing.id);
+    else return;
+  }
+
+  const rect  = canvas.getBoundingClientRect();
+  const scaleX = canvas.width  / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const x = (e.clientX - rect.left)  * scaleX;
+  const y = (e.clientY - rect.top)   * scaleY;
+
+  ANNOT.points[ANNOT.activeJoint] = { x, y };
+
+  // Avanzar al siguiente joint sin colocar
+  const currentIdx = JOINTS_DEF.findIndex(j => j.id === ANNOT.activeJoint);
+  const next = JOINTS_DEF.slice(currentIdx + 1).find(j => !ANNOT.points[j.id]);
+  if (next) {
+    selectJoint(next.id);
+  } else {
+    ANNOT.activeJoint = null;
+    document.getElementById('annotInstr').textContent = '✅ Todos los puntos colocados — presiona Analizar';
+  }
+
+  updateProgress();
+  initJointButtons();
+}
+
+function updateProgress() {
+  const placed = Object.keys(ANNOT.points).length;
+  const total  = JOINTS_DEF.length;
+  const el = document.getElementById('annotProgress');
+  if (el) el.textContent = `${placed}/${total} puntos colocados`;
+}
+
+function undoPoint() {
+  const keys = Object.keys(ANNOT.points);
+  if (!keys.length) return;
+  delete ANNOT.points[keys[keys.length - 1]];
+  updateProgress();
+  initJointButtons();
+}
+
+function clearAllPoints() {
+  ANNOT.points    = {};
+  ANNOT.activeJoint = null;
+  ANNOT.locked    = false;
+  updateProgress();
+  initJointButtons();
+  // Reset sidebar
+  document.getElementById('scoreNum').textContent = '—';
+  document.getElementById('scoreInterp').textContent = 'Coloca los puntos articulares';
+  document.getElementById('segsContainer').innerHTML =
+    '<div class="text-muted text-mono" style="font-size:11px;text-align:center;padding:16px 0;">Coloca los puntos articulares</div>';
+  ['low','med','high'].forEach(r => {
+    document.getElementById('rf-'+r).style.width = '0%';
+    document.getElementById('rp-'+r).textContent = '—';
+  });
+}
+
+// ─── CALCULAR ÁNGULOS ─────────────────────────────
+function angleBetween(A, B, C) {
+  if (!A||!B||!C) return null;
+  const vBA = [A.x - B.x, A.y - B.y];
+  const vBC = [C.x - B.x, C.y - B.y];
+  const dot  = vBA[0]*vBC[0] + vBA[1]*vBC[1];
+  const mag  = Math.hypot(...vBA) * Math.hypot(...vBC);
+  if (mag === 0) return null;
+  return Math.round(Math.acos(Math.max(-1, Math.min(1, dot/mag))) * 180/Math.PI);
+}
+
+// Ángulo de un joint específico respecto a sus segmentos
+function getJointAngle(jid) {
+  const P = ANNOT.points;
+  switch(jid) {
+    case 'neck':
+      return angleBetween(P.head, P.neck,
+        P.l_shoulder && P.r_shoulder
+          ? { x:(P.l_shoulder.x+P.r_shoulder.x)/2, y:(P.l_shoulder.y+P.r_shoulder.y)/2 }
+          : P.l_shoulder || P.r_shoulder);
+    case 'l_shoulder': return angleBetween(P.neck,      P.l_shoulder, P.l_elbow);
+    case 'r_shoulder': return angleBetween(P.neck,      P.r_shoulder, P.r_elbow);
+    case 'l_elbow':    return angleBetween(P.l_shoulder,P.l_elbow,    P.l_wrist);
+    case 'r_elbow':    return angleBetween(P.r_shoulder,P.r_elbow,    P.r_wrist);
+    case 'l_wrist':    return angleBetween(P.l_elbow,   P.l_wrist,    null) !== null
+                         ? Math.abs(90 - (angleBetween(P.l_elbow, P.l_wrist,
+                             {x:P.l_wrist.x, y:P.l_wrist.y-50}) || 90))
+                         : null;
+    case 'mid_hip': {
+      const sh = (P.l_shoulder && P.r_shoulder)
+        ? { x:(P.l_shoulder.x+P.r_shoulder.x)/2, y:(P.l_shoulder.y+P.r_shoulder.y)/2 }
+        : P.l_shoulder || P.r_shoulder;
+      const kn = P.l_knee || P.r_knee;
+      return angleBetween(sh, P.mid_hip, kn);
+    }
+    case 'l_knee': return angleBetween(P.mid_hip, P.l_knee, { x:P.l_knee.x, y:P.l_knee.y+80 });
+    case 'r_knee': return angleBetween(P.mid_hip, P.r_knee, { x:P.r_knee.x, y:P.r_knee.y+80 });
+    default: return null;
+  }
+}
+
+function computeSegmentRisk(a, b) {
+  const jA = JOINTS_DEF.find(j=>j.id===a);
+  const ang = getJointAngle(a) || getJointAngle(b);
+  if (ang === null) return 'low';
+  return jointRiskFn(ang, jA?.seg || 'elbow');
+}
+
+function jointRiskFn(angle, seg) {
+  if (angle === null || angle === undefined) return 'low';
+  const t = RISK_THRESHOLDS[seg] || RISK_THRESHOLDS.elbow;
+  return t.find(x => angle <= x.max)?.r || 'high';
+}
+
+// ─── ANALIZAR (calcular todo y actualizar sidebar) ──
+function lockAndAnalyze() {
+  const placed = Object.keys(ANNOT.points).length;
+  if (placed < 3) {
+    alert('Coloca al menos 3 puntos articulares para calcular ángulos.');
+    return;
+  }
+
+  ANNOT.locked = true;
+  ANNOT.activeJoint = null;
+
+  // Calcular todos los ángulos
+  const angles = {};
+  JOINTS_DEF.forEach(j => { angles[j.id] = getJointAngle(j.id); });
+
+  // Mapear a estructura lastAngles
+  APP.lastAngles = {
+    neck:      angles.neck,
+    trunk:     angles.mid_hip,
+    shoulder:  { l: angles.l_shoulder, r: angles.r_shoulder },
+    elbow:     { l: angles.l_elbow,    r: angles.r_elbow    },
+    wrist:     { l: angles.l_wrist,    r: angles.r_wrist    },
+    hip:       { l: angles.mid_hip },
+    knee:      { l: angles.l_knee,     r: angles.r_knee     },
+  };
+
+  // Alimentar calculadora REBA con ángulos reales
+  const nk = angles.neck      || 0;
+  const tr = angles.mid_hip   || 0;
+  const sh = angles.l_shoulder|| 0;
+  const el = angles.l_elbow   || 90;
+  const wr = angles.l_wrist   || 0;
+
+  document.getElementById('s-trunk').value = Math.min(tr, 60);
+  document.getElementById('s-neck').value  = Math.min(nk, 45);
+  document.getElementById('s-arm').value   = Math.min(sh, 120);
+  document.getElementById('s-fore').value  = Math.min(el, 145);
+  document.getElementById('s-wrist').value = Math.min(wr, 45);
+  calcREBA();
+
+  const rebaScore = +document.getElementById('reba-score').textContent;
+  const risk      = getRiskFromScore('REBA', rebaScore);
+
+  // Actualizar score hero
+  document.getElementById('scoreNum').textContent    = rebaScore;
+  document.getElementById('scoreNum').style.color    = getColor(risk.c);
+  document.getElementById('scoreInterp').textContent = `${risk.l} — ${risk.a}`;
+  document.getElementById('scoreMethod').textContent = 'PUNTUACIÓN REBA';
+  APP.videoLoaded = true;
+
+  // Distribución de riesgo por segmento
+  const riskCounts = { low:0, med:0, high:0 };
+  JOINTS_DEF.forEach(j => {
+    const ang = angles[j.id];
+    if (ang !== null && ang !== undefined) {
+      riskCounts[jointRiskFn(ang, j.seg)]++;
+    }
+  });
+  const total = Object.values(riskCounts).reduce((a,b)=>a+b, 0) || 1;
+  ['low','med','high'].forEach(r => {
+    const pct = Math.round(riskCounts[r] / total * 100);
+    document.getElementById('rf-'+r).style.width = pct + '%';
+    document.getElementById('rp-'+r).textContent = pct + '%';
+  });
+
+  // Panel de segmentos
+  const segs = [
+    { n:'Cuello',      a:angles.neck,         seg:'neck'     },
+    { n:'Tronco',      a:angles.mid_hip,       seg:'hip'      },
+    { n:'Hombro Izq',  a:angles.l_shoulder,    seg:'shoulder' },
+    { n:'Hombro Der',  a:angles.r_shoulder,    seg:'shoulder' },
+    { n:'Codo Izq',    a:angles.l_elbow,       seg:'elbow'    },
+    { n:'Codo Der',    a:angles.r_elbow,       seg:'elbow'    },
+    { n:'Muñeca Izq',  a:angles.l_wrist,       seg:'wrist'    },
+    { n:'Rodilla Izq', a:angles.l_knee,        seg:'knee'     },
+    { n:'Rodilla Der', a:angles.r_knee,        seg:'knee'     },
+  ];
+
+  document.getElementById('segsContainer').innerHTML =
+    segs.filter(s => s.a !== null && s.a !== undefined).map(s => {
+      const r   = jointRiskFn(s.a, s.seg);
+      const col = getColor(r);
+      const pct = Math.min(s.a, 120) / 120 * 100;
+      return `<div class="seg-row">
+        <span class="seg-name">${s.n}</span>
+        <div class="seg-bar"><div class="seg-fill" style="width:${pct}%;background:${col}"></div></div>
+        <span class="seg-ang" style="color:${col}">${s.a}°</span>
+      </div>`;
+    }).join('') || '<div class="text-muted text-mono" style="text-align:center;padding:12px;">Sin ángulos calculados</div>';
+
+  // Tabla de ángulos detallada
+  document.getElementById('angleCard').style.display = 'block';
+  document.getElementById('anglesGrid').innerHTML =
+    segs.filter(s => s.a !== null && s.a !== undefined).map(s => {
+      const r   = jointRiskFn(s.a, s.seg);
+      const col = getColor(r);
+      return `<div style="background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:10px;text-align:center;">
+        <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">${s.n}</div>
+        <div style="font-family:var(--font-data);font-size:22px;font-weight:700;color:${col}">${s.a}°</div>
+        <div style="margin-top:4px;"><span class="badge badge-${r}">${r==='low'?'BAJO':r==='med'?'MEDIO':'ALTO'}</span></div>
+      </div>`;
+    }).join('');
+
+  document.getElementById('annotInstr').textContent = `✅ REBA: ${rebaScore} — ${risk.l}`;
+}
+
+// ─── CONTROLES DE VIDEO ───────────────────────────
 function togglePlay() {
   if (!videoEl) return;
   const btn = document.getElementById('playBtn');
-  if (videoEl.paused) { videoEl.play(); btn.textContent='⏸'; } else { videoEl.pause(); btn.textContent='▶'; }
+  if (videoEl.paused) { videoEl.play(); if(btn) btn.textContent='⏸'; }
+  else                { videoEl.pause(); if(btn) btn.textContent='▶'; }
 }
 
 function seekVideo(e) {
-  if (!videoEl) return;
+  if (!videoEl || !videoEl.duration) return;
   const pct = e.offsetX / e.currentTarget.offsetWidth;
   videoEl.currentTime = pct * videoEl.duration;
+}
+
+function stepFrame(dir) {
+  if (!videoEl) return;
+  videoEl.pause();
+  videoEl.currentTime = Math.max(0, Math.min(videoEl.duration, videoEl.currentTime + dir/30));
+  if (document.getElementById('playBtn')) document.getElementById('playBtn').textContent = '▶';
 }
 
 function toggleOverlay() {
   showOverlay = !showOverlay;
   const btn = document.getElementById('overlayBtn');
-  btn.textContent = showOverlay ? '👁 Ocultar' : '👁 Mostrar';
-  if (!showOverlay && ctx) ctx.clearRect(0,0,canvas.width,canvas.height);
+  if (btn) btn.textContent = showOverlay ? '👁' : '👁‍🗨';
+  if (!showOverlay && ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
 function captureFrame() {
@@ -2624,17 +2965,186 @@ function captureFrame() {
   a.click();
 }
 
-function dragOver(e) { e.preventDefault(); document.getElementById('uploadZone').classList.add('drag'); }
+function dragOver(e)  { e.preventDefault(); document.getElementById('uploadZone').classList.add('drag'); }
 function dragLeave(e) { document.getElementById('uploadZone').classList.remove('drag'); }
-function dropFile(e) {
+function dropFile(e)  {
   e.preventDefault();
   document.getElementById('uploadZone').classList.remove('drag');
   const file = e.dataTransfer.files[0];
   if (file?.type.startsWith('video/')) {
     const dt = new DataTransfer(); dt.items.add(file);
     document.getElementById('videoInput').files = dt.files;
-    loadVideo({target:document.getElementById('videoInput')});
+    loadVideo({ target: document.getElementById('videoInput') });
   }
+}
+
+// ══════════════════════════════════════════════
+//  GOOGLE SHEETS INTEGRATION
+// ══════════════════════════════════════════════
+
+function openSheetsConfig() {
+  const modal = document.getElementById('sheets-modal');
+  modal.style.display = 'flex';
+  const inp = document.getElementById('sheets-url-input');
+  if (inp && APP.sheetsUrl) {
+    inp.value = APP.sheetsUrl;
+    validateSheetsUrl(APP.sheetsUrl);
+  }
+}
+
+function closeSheetsModal() {
+  document.getElementById('sheets-modal').style.display = 'none';
+  document.getElementById('sheets-test-result').style.display = 'none';
+}
+
+function validateSheetsUrl(val) {
+  const msg = document.getElementById('url-validate-msg');
+  if (!val) {
+    msg.textContent = 'Ingresa la URL de tu Apps Script';
+    msg.style.color = 'var(--text3)';
+    return false;
+  }
+  if (val.includes('script.google.com/macros/s/') && val.endsWith('/exec')) {
+    msg.textContent = '✅ Formato correcto';
+    msg.style.color = 'var(--risk-low)';
+    return true;
+  }
+  msg.textContent = '⚠️ La URL debe terminar en /exec y contener script.google.com/macros/s/';
+  msg.style.color = 'var(--risk-med)';
+  return false;
+}
+
+function saveSheetsConfig() {
+  const url = document.getElementById('sheets-url-input').value.trim();
+  if (!validateSheetsUrl(url)) return;
+  APP.sheetsUrl = url;
+  localStorage.setItem('ergonom_sheets_url', url);
+  updateSyncIndicator('ok', 'Sheets conectado');
+  showSheetsResult('✅ URL guardada. Haz clic en "Probar conexión" para verificar.', 'low');
+}
+
+async function testSheetsConnection() {
+  if (!APP.sheetsUrl) { showSheetsResult('⚠️ Primero guarda la URL de tu Apps Script.', 'med'); return; }
+  showSheetsResult('⏳ Probando conexión...', 'info');
+  updateSyncIndicator('syncing', 'Conectando...');
+  try {
+    const res  = await fetch(`${APP.sheetsUrl}?action=stats`);
+    const data = await res.json();
+    if (data.total !== undefined) {
+      showSheetsResult(`✅ Conexión exitosa · ${data.total} evaluaciones en Sheets · Riesgo bajo: ${data.byRisk?.low||0} · Medio: ${data.byRisk?.med||0} · Alto: ${data.byRisk?.high||0}`, 'low');
+      updateSyncIndicator('ok', `Sheets ✓ (${data.total} registros)`);
+    } else {
+      showSheetsResult('❌ Respuesta inesperada: ' + JSON.stringify(data), 'high');
+      updateSyncIndicator('error', 'Error de respuesta');
+    }
+  } catch (e) {
+    showSheetsResult('❌ No se pudo conectar. Verifica que la URL sea correcta y que el script esté publicado como "Cualquier usuario".', 'high');
+    updateSyncIndicator('error', 'Sin conexión');
+  }
+}
+
+async function syncToSheets() {
+  if (!APP.sheetsUrl) { showSheetsResult('⚠️ Primero guarda la URL.', 'med'); return; }
+  if (APP.evaluations.length === 0) { showSheetsResult('⚠️ No hay evaluaciones locales para subir.', 'med'); return; }
+
+  showSheetsResult(`⏳ Subiendo ${APP.evaluations.length} evaluaciones...`, 'info');
+  updateSyncIndicator('syncing', 'Sincronizando...');
+
+  try {
+    const res  = await fetch(APP.sheetsUrl, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'saveBatch', data: APP.evaluations }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      showSheetsResult(`✅ ${data.saved} evaluaciones subidas a Google Sheets correctamente.`, 'low');
+      updateSyncIndicator('ok', `Sincronizado (${data.saved})`);
+    } else {
+      showSheetsResult('❌ Error: ' + (data.error || 'desconocido'), 'high');
+      updateSyncIndicator('error', 'Error al subir');
+    }
+  } catch (e) {
+    showSheetsResult('❌ Error de red: ' + e.message, 'high');
+    updateSyncIndicator('error', 'Error de red');
+  }
+}
+
+/**
+ * Envía UNA evaluación a Sheets automáticamente al guardar
+ */
+async function pushToSheets(ev) {
+  if (!APP.sheetsUrl) return; // sin configurar = silencioso
+  try {
+    const payload = {
+      action: 'save',
+      data: {
+        folio:         'ERG-' + String(ev.id).slice(-6),
+        date:          ev.date,
+        empresa:       document.getElementById('rep-empresa-inp')?.value || '—',
+        area:          ev.area,
+        puesto:        ev.puesto,
+        method:        ev.method,
+        score:         ev.score,
+        risk:          ev.risk,
+        observaciones: document.getElementById('desc-obs')?.value || '',
+        angles: {
+          neck:       APP.lastAngles.neck       || null,
+          trunk:      APP.lastAngles.trunk      || null,
+          shoulder_l: APP.lastAngles.shoulder?.l|| null,
+          elbow_l:    APP.lastAngles.elbow?.l   || null,
+          hip_l:      APP.lastAngles.hip?.l     || null,
+          knee_l:     APP.lastAngles.knee?.l    || null,
+        },
+      },
+    };
+    const res  = await fetch(APP.sheetsUrl, { method:'POST', body: JSON.stringify(payload) });
+    const data = await res.json();
+    if (data.success) {
+      updateSyncIndicator('ok', `Sheets ✓ (${data.folio})`);
+    } else {
+      updateSyncIndicator('error', 'Error al guardar');
+    }
+  } catch(e) {
+    updateSyncIndicator('error', 'Sin red');
+  }
+}
+
+/**
+ * Elimina de Sheets al borrar localmente
+ */
+async function deleteFromSheets(id) {
+  if (!APP.sheetsUrl) return;
+  try {
+    await fetch(APP.sheetsUrl, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'delete', folio: 'ERG-' + String(id).slice(-6) }),
+    });
+  } catch(e) { /* silencioso */ }
+}
+
+function updateSyncIndicator(status, text) {
+  APP.syncStatus = status;
+  const dot = document.getElementById('sync-dot');
+  const txt = document.getElementById('sync-txt');
+  if (!dot||!txt) return;
+  const colors = { ok:'var(--risk-low)', error:'var(--risk-high)', syncing:'var(--risk-med)', idle:'var(--text3)' };
+  dot.style.background = colors[status] || 'var(--text3)';
+  dot.style.boxShadow  = status === 'ok' ? '0 0 6px var(--risk-low)' : status === 'error' ? '0 0 6px var(--risk-high)' : 'none';
+  if (status === 'syncing') dot.style.animation = 'pulseDot 0.8s infinite';
+  else dot.style.animation = 'none';
+  txt.textContent = text;
+}
+
+function showSheetsResult(msg, type) {
+  const el = document.getElementById('sheets-test-result');
+  if (!el) return;
+  el.style.display = 'block';
+  const colors = { low:'rgba(34,197,94,0.1)', med:'rgba(245,158,11,0.1)', high:'rgba(239,68,68,0.1)', info:'rgba(59,130,246,0.1)' };
+  const borders = { low:'rgba(34,197,94,0.3)', med:'rgba(245,158,11,0.3)', high:'rgba(239,68,68,0.3)', info:'rgba(59,130,246,0.3)' };
+  el.style.background = colors[type] || colors.info;
+  el.style.border     = `1px solid ${borders[type] || borders.info}`;
+  el.style.color      = 'var(--text)';
+  el.textContent      = msg;
 }
 
 // ══════════════════════════════════════════════
@@ -2658,7 +3168,8 @@ function saveEvaluation() {
   APP.evaluations.unshift(ev);
   localStorage.setItem('ergonom_evals', JSON.stringify(APP.evaluations));
   refreshDashboard();
-  alert(`✅ Evaluación guardada (folio ${ev.id})`);
+  pushToSheets(ev); // ← sync a Google Sheets automáticamente
+  alert(`✅ Evaluación guardada (folio ERG-${String(ev.id).slice(-6)})`);
 }
 
 function saveCalcResult(method, score) {
@@ -2674,12 +3185,14 @@ function saveCalcResult(method, score) {
   APP.evaluations.unshift(ev);
   localStorage.setItem('ergonom_evals', JSON.stringify(APP.evaluations));
   document.getElementById('nb-evals').textContent = APP.evaluations.length;
+  pushToSheets(ev); // ← sync a Google Sheets
   alert(`✅ Resultado ${method} guardado`);
 }
 
 function deleteEval(id) {
   APP.evaluations = APP.evaluations.filter(e => e.id !== id);
   localStorage.setItem('ergonom_evals', JSON.stringify(APP.evaluations));
+  deleteFromSheets(id); // ← elimina también de Sheets
   refreshDashboard();
 }
 
@@ -3005,6 +3518,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Dashboard
   refreshDashboard();
+
+  // Inicializar botones de articulaciones
+  initJointButtons();
+
+  // Restaurar config de Google Sheets
+  if (APP.sheetsUrl) {
+    updateSyncIndicator('ok', 'Sheets configurado');
+  }
 
   // Fecha del reporte
   document.getElementById('rep-fecha').textContent = new Date().toLocaleDateString('es-MX');
