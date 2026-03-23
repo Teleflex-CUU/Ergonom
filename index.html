@@ -2,311 +2,347 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teleflex ErgoNOM v4.9 - Tiempo Real</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Teleflex ErgoNOM v5.1 - iPad Pro Edition</title>
     
-    <!-- MediaPipe Pose -->
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
     <style>
         :root {
-            --tf-blue: #005B9A; --bg: #F3F4F6; --surface: #FFFFFF;
+            --tf-blue: #005B9A; --bg: #F1F5F9; --surface: #FFFFFF;
             --risk-low: #16A34A; --risk-med: #D97706; --risk-high: #DC2626;
-            --text: #1F2937; --border: #E5E7EB;
+            --border: #CBD5E1; --text: #0F172A;
         }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
         
-        .app-shell { display: grid; grid-template-columns: 240px 1fr; grid-template-rows: 60px 1fr; height: 100vh; }
-        .topbar { grid-column: 1 / -1; background: var(--tf-blue); color: #fff; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .sidebar { background: #fff; border-right: 1px solid var(--border); padding: 20px 0; }
-        .nav-item { padding: 12px 20px; cursor: pointer; font-size: 14px; transition: 0.2s; border-left: 4px solid transparent; color: #6B7280; }
-        .nav-item.active { background: #EFF6FF; color: var(--tf-blue); border-left-color: var(--tf-blue); font-weight: 600; }
-
-        .content { overflow-y: auto; padding: 20px; display: grid; grid-template-columns: 1fr 350px; gap: 20px; }
+        .topbar { background: var(--tf-blue); color: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .main-container { display: grid; grid-template-columns: 240px 1fr; flex-grow: 1; overflow: hidden; }
         
-        .card { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 15px; position: relative; }
-        .card-title { font-size: 12px; font-weight: 700; color: var(--tf-blue); text-transform: uppercase; margin-bottom: 12px; letter-spacing: 0.5px; }
+        .sidebar { background: white; border-right: 1px solid var(--border); padding: 15px 0; overflow-y: auto; }
+        .nav-item { padding: 15px 25px; cursor: pointer; color: #64748B; border-left: 5px solid transparent; font-size: 14px; transition: 0.2s; }
+        .nav-item.active { background: #F8FAFC; color: var(--tf-blue); border-left-color: var(--tf-blue); font-weight: 700; }
 
-        .video-wrapper { position: relative; background: #000; border-radius: 8px; overflow: hidden; aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center; }
-        #videoEl { width: 100%; height: auto; }
-        #poseCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        .content { padding: 20px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        .page { display: none; }
+        .page.active { display: block; }
+
+        .card { background: white; border: 1px solid var(--border); border-radius: 15px; padding: 20px; margin-bottom: 20px; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
         
-        .controls { margin-bottom: 15px; display: flex; gap: 10px; }
-        .btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; font-size: 13px; transition: 0.2s; }
-        .btn-primary { background: var(--tf-blue); color: #fff; }
-        .btn-outline { background: #fff; border: 1px solid var(--border); }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        /* Workspace para iPad */
+        .workspace { position: relative; background: #000; border-radius: 12px; overflow: hidden; min-height: 500px; display: flex; align-items: center; justify-content: center; touch-action: none; }
+        #canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; touch-action: none; }
+        #videoSource, #imageSource { max-width: 100%; max-height: 100%; display: none; pointer-events: none; }
 
-        .live-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
-        .metric-box { background: #F9FAFB; padding: 10px; border-radius: 8px; border: 1px solid var(--border); }
-        .metric-val { font-size: 18px; font-weight: 700; display: block; }
-        .metric-label { font-size: 10px; color: #6B7280; text-transform: uppercase; }
-
-        #ai-result-box { margin-top: 15px; padding: 15px; border-radius: 8px; font-size: 13px; line-height: 1.5; display: none; background: #F0F9FF; border-left: 4px solid var(--tf-blue); }
-        .status-badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; color: white; margin-top: 5px; display: inline-block; }
-
-        #loadingOverlay { position: absolute; inset: 0; background: rgba(0,0,0,0.8); color: white; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 50; }
+        .btn { padding: 12px 20px; border-radius: 10px; border: none; cursor: pointer; font-weight: 600; font-size: 14px; display: inline-flex; align-items: center; gap: 10px; }
+        .btn-primary { background: var(--tf-blue); color: white; }
+        .btn-outline { background: white; border: 1px solid var(--border); }
+        
+        select, input, textarea { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; margin-top: 8px; font-size: 15px; background: #F8FAFC; }
+        
+        .risk-indicator { padding: 15px; border-radius: 12px; text-align: center; margin-top: 15px; }
+        .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; font-size: 12px; }
     </style>
 </head>
 <body>
 
-<div class="app-shell">
-    <header class="topbar">
-        <div style="display:flex; align-items:center; gap:10px;">
-            <div style="background:#fff; color:var(--tf-blue); padding:2px 8px; border-radius:4px; font-weight:900;">TFX</div>
-            <span style="font-weight:700; letter-spacing:-0.5px;">ErgoNOM v4.9 <span style="font-weight:400; opacity:0.7;">| AI Vision</span></span>
-        </div>
-        <div style="font-size:11px; opacity:0.8;">NOM-036-STPS-2018 Standard Compliance</div>
-    </header>
+<header class="topbar">
+    <div style="font-weight:700;">TELEFLEX <span style="font-weight:300;">ErgoNOM v5.1</span></div>
+    <div style="display:flex; gap:10px;">
+        <button class="btn btn-outline" onclick="exportToExcel()">Excel</button>
+        <button class="btn btn-outline" onclick="exportToPDF()">PDF</button>
+    </div>
+</header>
 
+<div class="main-container">
     <nav class="sidebar">
-        <div class="nav-item active">🎬 Análisis en Tiempo Real</div>
-        <div class="nav-item">📋 Historial de Reportes</div>
-        <div class="nav-item">⚙️ Configuración</div>
+        <div class="nav-item active" onclick="showPage('page-analysis', this)">🎯 Bio-Análisis</div>
+        <div class="nav-item" onclick="showPage('page-manual', this)">✍️ Registro Manual</div>
+        <div class="nav-item" onclick="showPage('page-history', this)">📚 Reportes</div>
     </nav>
 
     <main class="content">
-        <section>
-            <div class="controls">
-                <input type="file" id="videoInput" hidden accept="video/*" onchange="handleVideo(event)">
-                <button class="btn btn-outline" onclick="document.getElementById('videoInput').click()">📁 Cargar Video</button>
-                <button class="btn btn-primary" id="btnPlay" onclick="togglePlay()" disabled>▶ Iniciar Análisis</button>
-            </div>
-
-            <div class="card">
-                <div class="card-title">Monitor Biomecánico</div>
-                <div class="video-wrapper">
-                    <video id="videoEl" playsinline muted loop></video>
-                    <canvas id="poseCanvas"></canvas>
-                    <div id="loadingOverlay">
-                        <div style="margin-bottom:10px">Cargando Motores de Visión...</div>
+        <section id="page-analysis" class="page active">
+            <div class="grid-2">
+                <div>
+                    <div class="card">
+                        <div style="display:flex; gap:10px; margin-bottom:15px;">
+                            <button class="btn btn-outline" onclick="document.getElementById('fileIn').click()">📁 Foto/Video</button>
+                            <input type="file" id="fileIn" hidden onchange="loadMedia(event)">
+                            <button class="btn btn-primary" onclick="runAutoDetection()">🤖 Auto-Detectar</button>
+                        </div>
+                        
+                        <div class="workspace" id="workspace">
+                            <video id="videoSource" playsinline muted loop></video>
+                            <img id="imageSource">
+                            <canvas id="canvas"></canvas>
+                        </div>
                     </div>
                 </div>
 
-                <div class="live-metrics">
-                    <div class="metric-box">
-                        <span class="metric-label">Inclinación Tronco</span>
-                        <span class="metric-val" id="val-tronco">0°</span>
+                <div class="side-panel">
+                    <div class="card">
+                        <label><strong>Evaluación:</strong></label>
+                        <select id="methodSelector">
+                            <option value="NOM-036">NOM-036 (Carga/Empuje)</option>
+                            <option value="RULA">RULA (Miembros Sup.)</option>
+                            <option value="REBA">REBA (Cuerpo Entero)</option>
+                            <option value="NIOSH">NIOSH (Levantamiento)</option>
+                        </select>
                     </div>
-                    <div class="metric-box">
-                        <span class="metric-label">Flexión de Brazo</span>
-                        <span class="metric-val" id="val-brazo">0°</span>
+
+                    <div class="card" id="result-card">
+                        <div id="risk-box" class="risk-indicator" style="background: #F1F5F9;">
+                            <div style="font-size:11px; color:#64748B;">NIVEL DE RIESGO</div>
+                            <div id="risk-label" style="font-size:26px; font-weight:800;">ESPERANDO</div>
+                        </div>
+                        <div class="metric-grid">
+                            <div class="card" style="padding:10px; margin:0; text-align:center;">Tronco: <b id="m-tronco">0°</b></div>
+                            <div class="card" style="padding:10px; margin:0; text-align:center;">Brazo: <b id="m-brazo">0°</b></div>
+                        </div>
+                        <button class="btn btn-primary" style="width:100%; margin-top:15px;" onclick="saveAnalysis()">💾 Guardar Evaluación</button>
                     </div>
                 </div>
             </div>
         </section>
 
-        <aside>
-            <div class="card" style="margin-bottom:20px;">
-                <div class="card-title">Estado de Riesgo</div>
-                <div id="risk-status" style="font-size: 24px; font-weight: 800; color: #9CA3AF;">ESPERANDO...</div>
-                <div id="risk-badge" class="status-badge" style="background:#9CA3AF">SIN DATOS</div>
-                <p style="font-size:11px; color:#6B7280; margin-top:10px;">Basado en ángulos límites de la NOM-036.</p>
-            </div>
-
+        <!-- PAGINA MANUAL -->
+        <section id="page-manual" class="page">
             <div class="card">
-                <div class="card-title">Diagnóstico IA (Gemini)</div>
-                <button class="btn btn-primary" style="width:100%" id="btnAI" onclick="getAIDiagnosis()" disabled>✨ Generar Reporte Clínico</button>
-                <div id="ai-result-box"></div>
+                <h2>Hallazgos Manuales de Campo</h2>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-top:20px;">
+                    <div>
+                        <label>Modelo Aplicado</label>
+                        <select id="mModel">
+                            <option>NOM-036-STPS</option><option>RULA</option><option>REBA</option><option>NIOSH</option>
+                            <option>OWAS</option><option>ROSA (Oficina)</option><option>OCRA</option>
+                            <option>SNOOK</option><option>LEST</option><option>JSI</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Puntuación / Resultado</label>
+                        <input type="text" id="mScore" placeholder="Ej: Riesgo Muy Alto">
+                    </div>
+                </div>
+                <label style="margin-top:15px; display:block;">Observaciones Clínicas</label>
+                <textarea id="mDesc" rows="5"></textarea>
+                <button class="btn btn-primary" style="margin-top:20px;" onclick="saveManual()">✅ Registrar en Base de Datos</button>
             </div>
-        </aside>
+        </section>
+
+        <!-- PAGINA HISTORIAL -->
+        <section id="page-history" class="page">
+            <div class="card">
+                <h2>Historial Consolidado</h2>
+                <div id="historyTable" style="margin-top:20px; overflow-x:auto;"></div>
+            </div>
+        </section>
     </main>
 </div>
 
 <script>
-    const GEMINI_KEY = "AIzaSyD65M2zMMnsN4diyveLI2n98QOpR8nmC9M";
-    const videoEl = document.getElementById('videoEl');
-    const canvas = document.getElementById('poseCanvas');
+    const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
+    const video = document.getElementById('videoSource');
+    const img = document.getElementById('imageSource');
     
     let pose;
-    let isProcessing = false;
-    let currentAngles = { tronco: 0, brazo: 0 };
-    let vectorColor = "#16A34A";
+    let points = [];
+    let draggedPoint = null;
+    let history = JSON.parse(localStorage.getItem('ergo_v5_data') || '[]');
 
-    // 1. Inicializar MediaPipe Pose
-    async function initPose() {
-        document.getElementById('loadingOverlay').style.display = 'flex';
-        pose = new Pose({
-            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
-        });
-
-        pose.setOptions({
-            modelComplexity: 1,
-            smoothLandmarks: true,
-            minDetectionConfidence: 0.5,
-            minTrackingConfidence: 0.5
-        });
-
-        pose.onResults(onResults);
-        document.getElementById('loadingOverlay').style.display = 'none';
+    // Inicializar MediaPipe
+    async function init() {
+        pose = new Pose({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}` });
+        pose.setOptions({ modelComplexity: 1, smoothLandmarks: true });
+        pose.onResults(onPoseResults);
+        renderTable();
     }
 
-    // 2. Manejo de Video
-    function handleVideo(e) {
+    function loadMedia(e) {
         const file = e.target.files[0];
         if(!file) return;
-        videoEl.src = URL.createObjectURL(file);
-        videoEl.onloadedmetadata = () => {
-            canvas.width = videoEl.videoWidth;
-            canvas.height = videoEl.videoHeight;
-            document.getElementById('btnPlay').disabled = false;
-            document.getElementById('btnAI').disabled = false;
-        };
-    }
-
-    function togglePlay() {
-        if(videoEl.paused) {
-            videoEl.play();
-            renderFrame();
+        const url = URL.createObjectURL(file);
+        if(file.type.startsWith('video')) {
+            video.src = url; video.style.display = 'block'; img.style.display = 'none';
+            video.onloadedmetadata = () => { resizeCanvas(video.videoWidth, video.videoHeight); video.play(); };
         } else {
-            videoEl.pause();
+            img.src = url; img.style.display = 'block'; video.style.display = 'none';
+            img.onload = () => resizeCanvas(img.naturalWidth, img.naturalHeight);
         }
     }
 
-    // 3. Procesamiento en Tiempo Real
-    async function renderFrame() {
-        if(!videoEl.paused && !videoEl.ended) {
-            if(!isProcessing) {
-                isProcessing = true;
-                await pose.send({image: videoEl});
-                isProcessing = false;
-            }
-            requestAnimationFrame(renderFrame);
-        }
+    function resizeCanvas(w, h) {
+        const ww = document.getElementById('workspace').clientWidth;
+        canvas.width = ww;
+        canvas.height = ww * (h/w);
+        drawScene();
     }
 
-    // Lógica Matemática de Ángulos
-    function calcAngle(p1, p2, p3) {
-        let v1 = { x: p1.x - p2.x, y: p1.y - p2.y };
-        let v2 = { x: p3.x - p2.x, y: p3.y - p2.y };
-        let dot = v1.x * v2.x + v1.y * v2.y;
-        let mag1 = Math.sqrt(v1.x**2 + v1.y**2);
-        let mag2 = Math.sqrt(v2.x**2 + v2.y**2);
-        return (Math.acos(dot / (mag1 * mag2)) * 180) / Math.PI;
+    // --- EVENTOS DE PUNTERO (DEDO/IPAD) ---
+    canvas.addEventListener('pointerdown', e => {
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        draggedPoint = points.find(p => Math.hypot(p.x - x, p.y - y) < 30); // Radio amplio para dedos
+        if(draggedPoint) canvas.setPointerCapture(e.pointerId);
+    });
+
+    canvas.addEventListener('pointermove', e => {
+        if(!draggedPoint) return;
+        const rect = canvas.getBoundingClientRect();
+        draggedPoint.x = e.clientX - rect.left;
+        draggedPoint.y = e.clientY - rect.top;
+        drawScene();
+    });
+
+    canvas.addEventListener('pointerup', e => {
+        if(draggedPoint) canvas.releasePointerCapture(e.pointerId);
+        draggedPoint = null;
+    });
+
+    async function runAutoDetection() {
+        const source = video.style.display === 'block' ? video : img;
+        await pose.send({ image: source });
     }
 
-    function calcVerticalAngle(p1, p2) {
-        let dx = p2.x - p1.x;
-        let dy = p2.y - p1.y;
-        return Math.abs((Math.atan2(dy, dx) * 180) / Math.PI) - 90;
-    }
-
-    function onResults(results) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    function onPoseResults(results) {
         if (!results.poseLandmarks) return;
-
         const lm = results.poseLandmarks;
-        const w = canvas.width;
-        const h = canvas.height;
+        const w = canvas.width, h = canvas.height;
 
-        // Puntos Clave
-        const pts = {
-            hombro: { x: lm[12].x * w, y: lm[12].y * h },
-            codo: { x: lm[14].x * w, y: lm[14].y * h },
-            muñeca: { x: lm[16].x * w, y: lm[16].y * h },
-            cadera: { x: lm[24].x * w, y: lm[24].y * h }
-        };
+        // Cuello es el punto medio entre hombros
+        const cuelloX = (lm[11].x + lm[12].x) / 2 * w;
+        const cuelloY = (lm[11].y + lm[12].y) / 2 * h;
 
-        // Calcular Ángulos
-        const anguloTronco = Math.abs(calcVerticalAngle(pts.hombro, pts.cadera));
-        const anguloBrazo = calcAngle(pts.cadera, pts.hombro, pts.codo);
-
-        currentAngles = { tronco: anguloTronco, brazo: anguloBrazo };
-
-        // Colorimetría según NOM-036
-        let riskText = "BAJO (OK)";
-        let badgeColor = "#16A34A";
-        vectorColor = "#16A34A";
-
-        if (anguloTronco > 20 || anguloBrazo > 20) {
-            riskText = "MEDIO (ALERTA)";
-            badgeColor = "#D97706";
-            vectorColor = "#D97706";
-        }
-        if (anguloTronco > 60 || anguloBrazo > 60) {
-            riskText = "ALTO (PELIGRO)";
-            badgeColor = "#DC2626";
-            vectorColor = "#DC2626";
-        }
-
-        // Actualizar UI
-        document.getElementById('val-tronco').innerText = `${anguloTronco.toFixed(1)}°`;
-        document.getElementById('val-brazo').innerText = `${anguloBrazo.toFixed(1)}°`;
-        document.getElementById('risk-status').innerText = riskText;
-        document.getElementById('risk-status').style.color = vectorColor;
-        document.getElementById('risk-badge').style.background = badgeColor;
-        document.getElementById('risk-badge').innerText = `NOM-036: ${riskText.split(' ')[0]}`;
-
-        drawSkeleton(pts);
+        points = [
+            { id: 'C', label: 'Cabeza', x: lm[0].x * w, y: lm[0].y * h },
+            { id: 'CU', label: 'Cuello', x: cuelloX, y: cuelloY },
+            { id: 'H', label: 'Hombro', x: lm[12].x * w, y: lm[12].y * h },
+            { id: 'Co', label: 'Codo', x: lm[14].x * w, y: lm[14].y * h },
+            { id: 'M', label: 'Muñeca', x: lm[16].x * w, y: lm[16].y * h },
+            { id: 'Ca', label: 'Cadera', x: lm[24].x * w, y: lm[24].y * h },
+            { id: 'R', label: 'Rodilla', x: lm[26].x * w, y: lm[26].y * h },
+            { id: 'T', label: 'Tobillo', x: lm[28].x * w, y: lm[28].y * h }
+        ];
+        drawScene();
     }
 
-    function drawSkeleton(pts) {
-        ctx.strokeStyle = vectorColor;
-        ctx.lineWidth = 6;
-        ctx.lineCap = 'round';
+    function drawScene() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if(points.length === 0) return;
 
-        const drawLine = (p1, p2) => {
-            ctx.beginPath();
-            ctx.moveTo(p1.x, p1.y);
-            ctx.lineTo(p2.x, p2.y);
-            ctx.stroke();
+        // Cálculos
+        const aTronco = calculateAngle(points[2], points[5], {x: points[5].x, y: 0}); // Hombro-Cadera-Vertical
+        const aBrazo = calculateAngle(points[5], points[2], points[3]); // Cadera-Hombro-Codo
+
+        let color = '#16A34A'; let risk = 'BAJO';
+        if(aTronco > 20 || aBrazo > 20) { color = '#D97706'; risk = 'MEDIO'; }
+        if(aTronco > 60 || aBrazo > 60) { color = '#DC2626'; risk = 'ALTO'; }
+
+        // UI
+        document.getElementById('m-tronco').innerText = aTronco.toFixed(1) + '°';
+        document.getElementById('m-brazo').innerText = aBrazo.toFixed(1) + '°';
+        document.getElementById('risk-label').innerText = risk;
+        document.getElementById('risk-box').style.background = color + '22';
+        document.getElementById('risk-label').style.color = color;
+
+        // Dibujar Conexiones
+        ctx.strokeStyle = color; ctx.lineWidth = 4;
+        const connect = (i, j) => {
+            ctx.beginPath(); ctx.moveTo(points[i].x, points[i].y);
+            ctx.lineTo(points[j].x, points[j].y); ctx.stroke();
         };
+        connect(0, 1); connect(1, 2); connect(2, 3); connect(3, 4); // Superior
+        connect(2, 5); connect(5, 6); connect(6, 7); // Inferior
 
-        drawLine(pts.hombro, pts.codo);
-        drawLine(pts.codo, pts.muñeca);
-        drawLine(pts.hombro, pts.cadera);
-
-        // Nodos
-        Object.values(pts).forEach(p => {
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
-            ctx.fillStyle = "#FFFFFF";
-            ctx.fill();
-            ctx.strokeStyle = vectorColor;
-            ctx.lineWidth = 2;
-            ctx.stroke();
+        // Dibujar Puntos con Iniciales
+        points.forEach(p => {
+            ctx.fillStyle = color; ctx.beginPath(); ctx.arc(p.x, p.y, 14, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = 'white'; ctx.font = 'bold 12px Inter'; ctx.textAlign = 'center';
+            ctx.fillText(p.id, p.x, p.y + 4);
+            
+            // Etiqueta pequeña flotante
+            ctx.fillStyle = '#0F172A'; ctx.font = '9px Inter';
+            ctx.fillText(p.label, p.x, p.y - 18);
         });
     }
 
-    // 4. Integración con Gemini para Diagnóstico
-    async function getAIDiagnosis() {
-        const box = document.getElementById('ai-result-box');
-        box.style.display = 'block';
-        box.innerHTML = "Consultando base de conocimientos ergonómicos... ⏳";
-
-        const prompt = `Actúa como especialista en ergonomía industrial de Teleflex.
-        Analiza estos datos medidos en video:
-        - Flexión de Tronco: ${currentAngles.tronco.toFixed(1)}°
-        - Elevación de Brazo: ${currentAngles.brazo.toFixed(1)}°
-        
-        Bajo la NOM-036-STPS-2018:
-        1. Clasifica el riesgo.
-        2. Indica si requiere rediseño de estación.
-        3. Da 3 recomendaciones breves.
-        Responde en HTML limpio (usa <strong> y <br>).`;
-
-        try {
-            const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-            });
-            const data = await resp.json();
-            const text = data.candidates[0].content.parts[0].text;
-            box.innerHTML = text.replace(/```html|```/g, '');
-        } catch (e) {
-            box.innerHTML = "Error al conectar con la IA. Verifique su API Key.";
-        }
+    function calculateAngle(p1, p2, p3) {
+        const v1 = {x: p1.x - p2.x, y: p1.y - p2.y};
+        const v2 = {x: p3.x - p2.x, y: p3.y - p2.y};
+        const dot = v1.x * v2.x + v1.y * v2.y;
+        const mag1 = Math.sqrt(v1.x**2 + v1.y**2);
+        const mag2 = Math.sqrt(v2.x**2 + v2.y**2);
+        return (Math.acos(dot/(mag1*mag2)) * 180 / Math.PI) || 0;
     }
 
-    // Inicio automático
-    initPose();
+    // --- BASE DE DATOS Y EXPORT ---
+    function saveAnalysis() {
+        const data = {
+            fecha: new Date().toLocaleString(),
+            metodo: document.getElementById('methodSelector').value,
+            tronco: document.getElementById('m-tronco').innerText,
+            brazo: document.getElementById('m-brazo').innerText,
+            riesgo: document.getElementById('risk-label').innerText,
+            tipo: 'Biomecánico'
+        };
+        history.unshift(data); localStorage.setItem('ergo_v5_data', JSON.stringify(history));
+        renderTable(); alert("Guardado.");
+    }
+
+    function saveManual() {
+        const data = {
+            fecha: new Date().toLocaleString(),
+            metodo: document.getElementById('mModel').value,
+            riesgo: document.getElementById('mScore').value,
+            tipo: document.getElementById('mDesc').value
+        };
+        history.unshift(data); localStorage.setItem('ergo_v5_data', JSON.stringify(history));
+        renderTable(); showPage('page-history');
+    }
+
+    function renderTable() {
+        let html = `<table><tr><th>Fecha</th><th>Modelo</th><th>Resultado</th><th>Detalle</th></tr>`;
+        history.forEach(h => {
+            html += `<tr><td>${h.fecha}</td><td>${h.metodo}</td><td>${h.riesgo}</td><td>${h.tipo === 'Biomecánico' ? 'Tronco: '+h.tronco : h.tipo}</td></tr>`;
+        });
+        document.getElementById('historyTable').innerHTML = html + `</table>`;
+    }
+
+    function exportToExcel() {
+        const ws = XLSX.utils.json_to_sheet(history);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Evaluaciones");
+        XLSX.writeFile(wb, "ReporteErgonomico_Teleflex.xlsx");
+    }
+
+    function exportToPDF() {
+        const { jsPDF } = window.jspdf; const doc = new jsPDF();
+        doc.text("Teleflex ErgoNOM - Reporte Consolidado", 20, 20);
+        history.forEach((h, i) => doc.text(`${i+1}. ${h.fecha} | ${h.metodo} | ${h.riesgo}`, 20, 40 + (i*10)));
+        doc.save("Reporte.pdf");
+    }
+
+    function showPage(id, el) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        el.classList.add('active');
+    }
+
+    init();
 </script>
+
+<style>
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th { background: #F8FAFC; text-align: left; padding: 12px; border-bottom: 2px solid var(--border); font-size: 13px; }
+    td { padding: 12px; border-bottom: 1px solid var(--border); font-size: 13px; }
+</style>
 
 </body>
 </html>
