@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ErgoNOM v3.6 · Teleflex</title>
+<title>ErgoNOM v4.0 · Teleflex</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Space+Mono&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
@@ -55,8 +55,8 @@
 
 <div class="app-shell">
     <header class="topbar">
-        <div style="font-weight:700;">TELEFLEX ErgoNOM <span style="font-weight:400; font-size:12px; opacity:0.8;">v3.6</span></div>
-        <div style="font-size:11px;">Key Gemini: Interna Activa</div>
+        <div style="font-weight:700;">TELEFLEX ErgoNOM <span style="font-weight:400; font-size:12px; opacity:0.8;">v4.0</span></div>
+        <div style="font-size:11px;">Key Gemini: Integrada (v1.5-flash-latest)</div>
     </header>
 
     <nav class="sidebar">
@@ -70,14 +70,16 @@
         <section id="page-video" class="page active">
             <div style="display:grid; grid-template-columns: 1fr 350px; gap: 20px;">
                 <div class="card">
-                    <div class="card-title">Captura de Movilidad (Cámara Posterior)</div>
+                    <div class="card-title">Captura y Vectores Biomecánicos</div>
                     <div style="margin-bottom:15px; display:flex; gap:10px;">
                         <button class="btn btn-primary" onclick="startCamera()">📸 Iniciar Cámara</button>
+                        <button class="btn btn-outline" onclick="document.getElementById('videoInput').click()">📁 Subir Video</button>
+                        <input type="file" id="videoInput" style="display:none;" accept="video/*" onchange="loadVideo(event)">
                         <button class="btn btn-outline" onclick="snapFrame()">⏸ Congelar</button>
                         <button class="btn btn-danger" onclick="clearPoints()">🗑 Limpiar</button>
                     </div>
                     <div class="video-container" id="vContainer">
-                        <video id="videoEl" playsinline muted></video>
+                        <video id="videoEl" playsinline muted loop></video>
                         <canvas id="poseCanvas"></canvas>
                     </div>
                 </div>
@@ -87,7 +89,7 @@
                         <div class="card-title">Puntos de Articulación</div>
                         <p style="font-size:11px; margin-bottom:10px; color:var(--text2);">1. Selecciona punto. 2. Toca la imagen.</p>
                         <div class="joint-selector" id="jointSelector"></div>
-                        <button class="btn btn-primary" style="width:100%; margin-top: 10px;" onclick="analyzeVideoWithAI()">✨ Analizar con IA</button>
+                        <button class="btn btn-primary" style="width:100%; margin-top: 10px;" onclick="analyzeVideoWithAI()">✨ Analizar Riesgo con IA</button>
                         <div id="video-ai-result" class="ai-box"></div>
                     </div>
                 </div>
@@ -104,7 +106,7 @@
         </section>
 
         <section id="page-calc" class="page">
-            <div class="card"><div class="card-title">Módulo de Calculadoras</div><p style="font-size: 13px; color: var(--text3);">En desarrollo para v4.0</p></div>
+            <div class="card"><div class="card-title">Módulo de Calculadoras</div><p style="font-size: 13px; color: var(--text3);">En desarrollo para próxima versión</p></div>
         </section>
 
         <section id="page-report" class="page">
@@ -125,6 +127,7 @@ let videoEl, canvas, ctx, stream;
 let currentJoint = null;
 let points = {};
 let renderLoopId = null;
+let vectorColor = "#FFFFFF"; 
 
 const JOINTS = [
     {id:'cabeza', n:'Cabeza'}, {id:'cuello', n:'Cuello'}, {id:'hombro', n:'Hombro'},
@@ -149,7 +152,6 @@ document.addEventListener('DOMContentLoaded', () => {
             x: (e.clientX - rect.left) * scaleX, 
             y: (e.clientY - rect.top) * scaleY 
         };
-        // Avanzar a la siguiente articulación automáticamente si existe
         autoAdvanceJoint();
     });
 });
@@ -203,6 +205,24 @@ async function startCamera() {
     }
 }
 
+window.loadVideo = function(e) {
+    if(stream) { stream.getTracks().forEach(t => t.stop()); }
+    const file = e.target.files[0];
+    if(!file) return;
+    
+    videoEl.srcObject = null;
+    videoEl.src = URL.createObjectURL(file);
+    videoEl.load();
+    
+    videoEl.play().catch(err => console.warn("Presione play en el video", err));
+    
+    videoEl.onloadedmetadata = () => {
+        canvas.width = videoEl.videoWidth;
+        canvas.height = videoEl.videoHeight;
+        startRenderLoop();
+    };
+};
+
 function snapFrame() { 
     if(!videoEl.paused) {
         videoEl.pause(); 
@@ -213,16 +233,39 @@ function snapFrame() {
 
 function clearPoints() {
     points = {};
+    vectorColor = "#FFFFFF";
     document.getElementById('video-ai-result').style.display = 'none';
 }
 
-// Bucle de renderizado continuo para evitar que los puntos parpadeen o desaparezcan
 function startRenderLoop() {
     if (renderLoopId) cancelAnimationFrame(renderLoopId);
     
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
+        ctx.strokeStyle = vectorColor;
+        ctx.lineWidth = 4;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+
+        function connect(p1, p2) {
+            if(points[p1] && points[p2]) {
+                ctx.beginPath();
+                ctx.moveTo(points[p1].x, points[p1].y);
+                ctx.lineTo(points[p2].x, points[p2].y);
+                ctx.stroke();
+            }
+        }
+
+        connect('cuello', 'hombro');
+        connect('hombro', 'codo');
+        connect('codo', 'muñeca');
+
+        connect('cadera', 'rodilla');
+        connect('rodilla', 'tobillo');
+
+        connect('cuello', 'cadera');
+
         for(let id in points) {
             const p = points[id];
             
@@ -237,7 +280,7 @@ function startRenderLoop() {
             
             ctx.fillStyle = "#FFFFFF";
             ctx.font = "bold 14px Inter";
-            ctx.fillText(id.substring(0,3).toUpperCase(), p.x + 12, p.y + 4);
+            ctx.fillText(id.substring(0,3).toUpperCase(), p.x + 12, p.y - 10);
         }
         renderLoopId = requestAnimationFrame(draw);
     }
@@ -253,9 +296,43 @@ async function analyzeVideoWithAI() {
 
     const prompt = `Analiza estas coordenadas 2D relativas de la postura de trabajadores (en pixeles): ${JSON.stringify(points)}. 
     Estima posibles ángulos críticos (flexiones y extensiones) e infiere el riesgo ergonómico bajo la NOM-036-STPS-2018. 
-    Proporciona una conclusión técnica, directa y estructurada.`;
+    IMPORTANTE: Debes responder ÚNICAMENTE con un JSON válido, sin texto adicional, sin bloques de código (sin \`\`\`json), respetando estrictamente esta estructura:
+    {
+      "analisis": "Tu conclusión técnica, directa y estructurada aquí. Usa <br> para saltos de línea y <strong> para negritas.",
+      "nivel_riesgo": "BAJO, MEDIO o ALTO",
+      "color_vectores": "#16A34A si es BAJO (Verde), #D97706 si es MEDIO (Amarillo), #DC2626 si es ALTO (Rojo)"
+    }`;
 
-    callGemini(prompt, resultBox, 'Análisis de Video');
+    try {
+        const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_KEY}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        });
+        const data = await resp.json();
+        
+        if (data.error) throw new Error(data.error.message);
+
+        const raw = data.candidates[0].content.parts[0].text;
+        const cleanJson = raw.replace(/```json/g, '').replace(/```/g, '').trim();
+        const parsed = JSON.parse(cleanJson);
+
+        vectorColor = parsed.color_vectores || "#FFFFFF";
+
+        const formattedHTML = `
+            <div style="margin-bottom: 10px; font-size: 14px;">
+                <strong>Riesgo Estimado:</strong> 
+                <span style="color:${vectorColor}; font-weight:bold;">${parsed.nivel_riesgo}</span>
+            </div>
+            <div>${parsed.analisis}</div>
+        `;
+        
+        resultBox.innerHTML = formattedHTML;
+        saveToLocalStorage('Análisis de Video Biomecánico', formattedHTML);
+
+    } catch (e) {
+        resultBox.innerHTML = `<span style="color:var(--risk-high)">Error de conexión o formato: ${e.message}</span>`;
+    }
 }
 
 async function analyzeTextOnly() {
@@ -270,12 +347,8 @@ async function analyzeTextOnly() {
     Identifica factores de riesgo según la NOM-036-STPS-2018 y recomienda un método de evaluación (REBA, RULA o NIOSH). 
     Responde en formato de lista técnica.`;
 
-    callGemini(prompt, resultBox, 'Análisis Descriptivo');
-}
-
-async function callGemini(prompt, targetEl, typeTitle) {
     try {
-        const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`, {
+        const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_KEY}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
@@ -285,17 +358,14 @@ async function callGemini(prompt, targetEl, typeTitle) {
         if (data.error) throw new Error(data.error.message);
 
         const raw = data.candidates[0].content.parts[0].text;
-        
-        // Formatear salida
         const formattedHTML = raw.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                                  .replace(/\*(.*?)\*/g, '• $1')
                                  .replace(/\n/g, '<br>');
                                  
-        targetEl.innerHTML = formattedHTML;
-        
-        saveToLocalStorage(typeTitle, formattedHTML);
+        resultBox.innerHTML = formattedHTML;
+        saveToLocalStorage('Análisis Descriptivo', formattedHTML);
     } catch (e) {
-        targetEl.innerHTML = `<span style="color:var(--risk-high)">Error de conexión con la IA: ${e.message}</span>`;
+        resultBox.innerHTML = `<span style="color:var(--risk-high)">Error de conexión con la IA: ${e.message}</span>`;
     }
 }
 
