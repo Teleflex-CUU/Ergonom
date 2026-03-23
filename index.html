@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ErgoNOM v4.5 · Teleflex</title>
+<title>ErgoNOM v4.6 · Teleflex</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Space+Mono&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
@@ -26,7 +26,7 @@
     .topbar { grid-column: 1 / -1; background: var(--tf-blue); color: #fff; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; z-index: 100; }
     .sidebar { background: #fff; border-right: 1px solid var(--border); padding: 20px 0; }
     .nav-item { padding: 12px 20px; cursor: pointer; font-size: 14px; transition: 0.2s; border-left: 4px solid transparent; color: var(--text2); }
-    .nav-item:hover, .nav-item.active { background: var(--tf-blue-light); color: var(--tf-blue); border-left-color: var(--tf-blue); }
+    .nav-item:hover, .nav-item.active { background: var(--tf-blue-light); color: var(--tf-blue); border-left-color: var(--tf-blue); font-weight: 600; }
 
     .content { overflow-y: auto; padding: 25px; }
     .page { display: none; }
@@ -42,7 +42,6 @@
     .btn { padding: 10px 16px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; gap: 8px; }
     .btn-primary { background: var(--tf-blue); color: #fff; }
     .btn-outline { background: transparent; border: 1px solid var(--border); }
-    .btn-danger { background: #FFEBEE; color: var(--risk-high); border: 1px solid rgba(220,38,38,0.2); }
 
     .ai-box { background: #f9fafb; border-left: 4px solid var(--tf-blue); padding: 15px; border-radius: 4px; font-size: 13px; margin-top: 15px; display: none; white-space: pre-wrap; line-height: 1.5; }
     
@@ -52,14 +51,15 @@
     .report-date { font-family: var(--font-data); font-size: 11px; color: var(--text3); margin-bottom: 5px; }
 
     #loadingOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: bold; z-index: 20; display: none; }
+    #statusAlert { font-size: 11px; color: var(--risk-med); margin-top: 10px; display: none; }
 </style>
 </head>
 <body>
 
 <div class="app-shell">
     <header class="topbar">
-        <div style="font-weight:700;">TELEFLEX ErgoNOM <span style="font-weight:400; font-size:12px; opacity:0.8;">v4.5</span></div>
-        <div style="font-size:11px;">IA de Visión: MediaPipe | Gemini: Activa</div>
+        <div style="font-weight:700;">TELEFLEX ErgoNOM <span style="font-weight:400; font-size:12px; opacity:0.8;">v4.6</span></div>
+        <div style="font-size:11px;">Motor: Híbrido Protegido</div>
     </header>
 
     <nav class="sidebar">
@@ -84,12 +84,13 @@
                         <canvas id="poseCanvas"></canvas>
                         <div id="loadingOverlay">Inicializando motor de visión...</div>
                     </div>
+                    <div id="statusAlert">⚠️ El motor de visión no se pudo cargar. Verifique su conexión de red.</div>
                 </div>
                 
                 <div>
                     <div class="card">
                         <div class="card-title">Evaluación de Postura Crítica</div>
-                        <p style="font-size:11px; margin-bottom:15px; color:var(--text2);">1. Suba un video. <br>2. La IA trazará el esqueleto de los trabajadores.<br>3. Pause en el momento de mayor esfuerzo y evalúe.</p>
+                        <p style="font-size:11px; margin-bottom:15px; color:var(--text2);">1. Suba un video de los trabajadores. <br>2. La IA trazará el esqueleto.<br>3. Pause en el momento de mayor esfuerzo biomecánico.</p>
                         <button class="btn btn-primary" style="width:100%;" onclick="analyzeVideoWithAI()">✨ Evaluar Postura Actual con Gemini</button>
                         <div id="video-ai-result" class="ai-box"></div>
                     </div>
@@ -107,7 +108,7 @@
         </section>
 
         <section id="page-calc" class="page">
-            <div class="card"><div class="card-title">Módulo de Calculadoras</div><p style="font-size: 13px; color: var(--text3);">En desarrollo para próxima versión</p></div>
+            <div class="card"><div class="card-title">Módulo de Calculadoras</div><p style="font-size: 13px; color: var(--text3);">En desarrollo para próxima versión.</p></div>
         </section>
 
         <section id="page-report" class="page">
@@ -123,40 +124,110 @@
 </div>
 
 <script>
+'use strict';
+
+// 1. ESTADO GLOBAL
 const GEMINI_KEY = "AIzaSyD65M2zMMnsN4diyveLI2n98QOpR8nmC9M";
 let videoEl, canvas, ctx;
 let points = {};
 let vectorColor = "#005B9A"; 
-let isPoseModelReady = false;
+let pose = null;
+let visionEngineActive = false;
 
-// Inicialización de MediaPipe Pose
-const pose = new Pose({
-    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
-});
+// 2. FUNCIONES DE NAVEGACIÓN Y UI (Asignadas a window para protección de scope)
+window.goPage = function(id) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    
+    const page = document.getElementById('page-' + id);
+    if(page) page.classList.add('active');
+    
+    const navItems = document.querySelectorAll('.nav-item');
+    const map = { 'video': 0, 'describe': 1, 'calc': 2, 'report': 3 };
+    if(navItems[map[id]]) navItems[map[id]].classList.add('active');
+    
+    if(id === 'report') window.renderReports();
+};
 
-pose.setOptions({
-    modelComplexity: 1,
-    smoothLandmarks: true,
-    enableSegmentation: false,
-    minDetectionConfidence: 0.5,
-    minTrackingConfidence: 0.5
-});
+window.renderReports = function() {
+    const container = document.getElementById('report-list');
+    let history = [];
+    try {
+        history = JSON.parse(localStorage.getItem('ergo_reports') || '[]');
+    } catch(e) {
+        history = [];
+    }
+    
+    if (history.length === 0) {
+        container.innerHTML = '<div style="color:var(--text3); font-size: 13px;">No hay reportes guardados.</div>';
+        return;
+    }
 
-pose.onResults(onPoseResults);
+    container.innerHTML = history.map(item => `
+        <div class="report-item">
+            <div class="report-date">${item.date} - <strong>${item.title}</strong></div>
+            <div style="font-size: 13px; line-height: 1.5; color: var(--text2);">${item.result}</div>
+        </div>
+    `).join('');
+};
 
+window.clearReports = function() {
+    localStorage.removeItem('ergo_reports');
+    window.renderReports();
+};
+
+window.saveToLocalStorage = function(title, htmlContent) {
+    let history = [];
+    try {
+        history = JSON.parse(localStorage.getItem('ergo_reports') || '[]');
+    } catch(e) {}
+    history.unshift({ date: new Date().toLocaleString(), title: title, result: htmlContent });
+    localStorage.setItem('ergo_reports', JSON.stringify(history));
+    if (document.getElementById('page-report').classList.contains('active')) {
+        window.renderReports();
+    }
+};
+
+// 3. INICIALIZACIÓN DE MOTOR DE VISIÓN Y EVENTOS
 document.addEventListener('DOMContentLoaded', () => {
     videoEl = document.getElementById('videoEl');
     canvas = document.getElementById('poseCanvas');
     ctx = canvas.getContext('2d');
-    renderReports();
+    
+    window.renderReports();
+
+    // Inicialización protegida de MediaPipe
+    try {
+        if (typeof Pose !== 'undefined') {
+            pose = new Pose({
+                locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
+            });
+            pose.setOptions({
+                modelComplexity: 1,
+                smoothLandmarks: true,
+                enableSegmentation: false,
+                minDetectionConfidence: 0.5,
+                minTrackingConfidence: 0.5
+            });
+            pose.onResults(onPoseResults);
+            visionEngineActive = true;
+        } else {
+            throw new Error("Librería Pose no disponible.");
+        }
+    } catch (e) {
+        visionEngineActive = false;
+        document.getElementById('statusAlert').style.display = 'block';
+    }
 });
 
-// Precarga del modelo al subir el video
+// 4. CONTROL DE VIDEO
 window.loadVideo = function(e) {
     const file = e.target.files[0];
     if(!file) return;
     
-    document.getElementById('loadingOverlay').style.display = 'flex';
+    if (visionEngineActive) {
+        document.getElementById('loadingOverlay').style.display = 'flex';
+    }
     document.getElementById('video-ai-result').style.display = 'none';
     
     videoEl.src = URL.createObjectURL(file);
@@ -166,32 +237,39 @@ window.loadVideo = function(e) {
         canvas.width = videoEl.videoWidth;
         canvas.height = videoEl.videoHeight;
         videoEl.play().catch(err => console.warn(err));
-        processVideoFrame();
+        
+        if (visionEngineActive) {
+            window.processVideoFrame();
+        } else {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
     };
 };
 
-// Bucle de procesamiento de frames enviados a MediaPipe
-async function processVideoFrame() {
-    if (!videoEl.paused && !videoEl.ended) {
-        await pose.send({ image: videoEl });
-        requestAnimationFrame(processVideoFrame);
-    }
-}
-
-// Control de reproducción
 window.togglePlayPause = function() {
     const btn = document.getElementById('btnPlayPause');
     if (videoEl.paused) {
         videoEl.play();
         btn.textContent = "⏸ Pausar / Analizar Frame";
-        processVideoFrame();
+        if (visionEngineActive) window.processVideoFrame();
     } else {
         videoEl.pause();
         btn.textContent = "▶ Reanudar Video";
     }
 };
 
-// Callback ejecutado por MediaPipe cuando detecta una postura
+window.processVideoFrame = async function() {
+    if (!videoEl.paused && !videoEl.ended && visionEngineActive && videoEl.videoWidth > 0) {
+        try {
+            await pose.send({ image: videoEl });
+        } catch (e) {
+            console.warn("Frame omitido por el motor de visión.");
+        }
+        requestAnimationFrame(window.processVideoFrame);
+    }
+};
+
+// 5. RASTREO Y DIBUJO
 function onPoseResults(results) {
     document.getElementById('loadingOverlay').style.display = 'none';
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -201,6 +279,144 @@ function onPoseResults(results) {
         const h = canvas.height;
         const lm = results.poseLandmarks;
 
-        // Mapeo automático de los landmarks de MediaPipe a las variables de la API
         points = {
-            cabeza: { x: lm
+            cabeza: { x: lm[0].x * w, y: lm[0].y * h },
+            cuello: { x: ((lm[11].x + lm[12].x) / 2) * w, y: ((lm[11].y + lm[12].y) / 2) * h },
+            hombro: { x: lm[12].x * w, y: lm[12].y * h },
+            codo: { x: lm[14].x * w, y: lm[14].y * h },
+            muñeca: { x: lm[16].x * w, y: lm[16].y * h },
+            cadera: { x: lm[24].x * w, y: lm[24].y * h },
+            rodilla: { x: lm[26].x * w, y: lm[26].y * h },
+            tobillo: { x: lm[28].x * w, y: lm[28].y * h }
+        };
+
+        drawSkeleton();
+    }
+}
+
+function drawSkeleton() {
+    ctx.strokeStyle = vectorColor;
+    ctx.lineWidth = 4;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+
+    function connect(p1, p2) {
+        if(points[p1] && points[p2]) {
+            ctx.beginPath();
+            ctx.moveTo(points[p1].x, points[p1].y);
+            ctx.lineTo(points[p2].x, points[p2].y);
+            ctx.stroke();
+        }
+    }
+
+    connect('cuello', 'hombro');
+    connect('hombro', 'codo');
+    connect('codo', 'muñeca');
+    connect('cadera', 'rodilla');
+    connect('rodilla', 'tobillo');
+    connect('cuello', 'cadera');
+
+    for(let id in points) {
+        const p = points[id];
+        ctx.beginPath();
+        ctx.fillStyle = vectorColor === "#FFFFFF" ? '#005B9A' : vectorColor;
+        ctx.arc(p.x, p.y, 6, 0, Math.PI*2);
+        ctx.fill();
+        
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    }
+}
+
+// 6. ANÁLISIS DE IA (GEMINI)
+window.analyzeVideoWithAI = async function() {
+    const resultBox = document.getElementById('video-ai-result');
+    if(Object.keys(points).length < 2) { 
+        alert("Asegúrese de que el motor de visión haya detectado la postura de los trabajadores en la pantalla."); 
+        return; 
+    }
+    if(!videoEl.paused) {
+        window.togglePlayPause();
+    }
+    
+    resultBox.style.display = 'block';
+    resultBox.innerHTML = "Analizando biomecánica de los trabajadores con Gemini IA... ⏳";
+
+    const prompt = `Analiza estas coordenadas 2D de la postura de trabajadores (en pixeles): ${JSON.stringify(points)}. 
+    Estima los ángulos críticos articulares e infiere el riesgo ergonómico bajo la NOM-036-STPS-2018. 
+    IMPORTANTE: Responde ÚNICAMENTE con un JSON válido, sin texto adicional y sin bloques de código, con esta estructura:
+    {
+      "analisis": "Conclusión técnica estructurada. Usa <br> para saltos de línea y <strong> para negritas.",
+      "nivel_riesgo": "BAJO, MEDIO o ALTO",
+      "color_vectores": "#16A34A si es BAJO (Verde), #D97706 si es MEDIO (Amarillo), #DC2626 si es ALTO (Rojo)"
+    }`;
+
+    try {
+        const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        });
+        const data = await resp.json();
+        
+        if (data.error) throw new Error(data.error.message);
+
+        const raw = data.candidates[0].content.parts[0].text;
+        const cleanJson = raw.replace(/```json/g, '').replace(/```/g, '').trim();
+        const parsed = JSON.parse(cleanJson);
+
+        vectorColor = parsed.color_vectores || "#005B9A";
+        drawSkeleton(); 
+
+        const formattedHTML = `
+            <div style="margin-bottom: 10px; font-size: 14px;">
+                <strong>Riesgo Estimado:</strong> 
+                <span style="color:${vectorColor}; font-weight:bold;">${parsed.nivel_riesgo}</span>
+            </div>
+            <div>${parsed.analisis}</div>
+        `;
+        
+        resultBox.innerHTML = formattedHTML;
+        window.saveToLocalStorage('Análisis Biomecánico Asistido', formattedHTML);
+
+    } catch (e) {
+        resultBox.innerHTML = `<span style="color:var(--risk-high)">Error en el análisis: ${e.message}</span>`;
+    }
+};
+
+window.analyzeTextOnly = async function() {
+    const text = document.getElementById('desc-task').value.trim();
+    const resultBox = document.getElementById('text-ai-result');
+    if(!text) return;
+
+    resultBox.style.display = 'block';
+    resultBox.innerHTML = "Generando diagnóstico ergonómico... ⏳";
+
+    const prompt = `Actúa como especialista en Salud Ocupacional. Analiza la siguiente tarea realizada por trabajadores: "${text}". 
+    Identifica factores de riesgo según la NOM-036-STPS-2018 y recomienda un método de evaluación (REBA, RULA o NIOSH).`;
+
+    try {
+        const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        });
+        const data = await resp.json();
+        
+        if (data.error) throw new Error(data.error.message);
+
+        const raw = data.candidates[0].content.parts[0].text;
+        const formattedHTML = raw.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                 .replace(/\*(.*?)\*/g, '• $1')
+                                 .replace(/\n/g, '<br>');
+                                 
+        resultBox.innerHTML = formattedHTML;
+        window.saveToLocalStorage('Análisis Descriptivo', formattedHTML);
+    } catch (e) {
+        resultBox.innerHTML = `<span style="color:var(--risk-high)">Error de conexión con la IA: ${e.message}</span>`;
+    }
+};
+</script>
+</body>
+</html>
