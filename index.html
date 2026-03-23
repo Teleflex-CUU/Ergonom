@@ -1,3 +1,39 @@
+# API Keys y configuración privada
+src/config.js
+.env
+.env.local
+.env.*.local
+
+# Dependencias (si se añaden en el futuro)
+node_modules/
+dist/
+build/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editores
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Logs
+*.log
+npm-debug.log*
+
+# Temporales
+*.tmp
+*.temp
+
+# GitHub Pages configuration
+# This file enables GitHub Pages to serve the site from the root directory.
+# No build step required — pure HTML/CSS/JS.
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -3536,3 +3572,505 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 </body>
 </html>
+
+MIT License
+
+Copyright (c) 2025 ErgoNOM Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+AVISO: Este software es una herramienta de apoyo para especialistas en
+ergonomía ocupacional. No reemplaza la evaluación de un profesional
+certificado. El uso de esta herramienta no garantiza el cumplimiento
+total con la NOM-036-STPS-2018 ni con ninguna otra norma aplicable.
+
+# 🦴 ErgoNOM v2.0 — Análisis Ergonómico NOM-036-STPS-2018
+
+![Version](https://img.shields.io/badge/versión-2.0.0-brightgreen)
+![NOM](https://img.shields.io/badge/NOM--036--STPS-2018-blue)
+![MediaPipe](https://img.shields.io/badge/MediaPipe_Pose-integrado-purple)
+![License](https://img.shields.io/badge/licencia-MIT-orange)
+![Sin dependencias npm](https://img.shields.io/badge/deps-0_npm-lightgrey)
+
+Plataforma web completa de análisis ergonómico ocupacional basada en la **NOM-036-STPS-2018** de México.
+Incluye detección real de esqueleto con **MediaPipe Pose**, calculadoras para **8 métodos ergonómicos**,
+exportación PDF y dashboard histórico. Todo en un solo archivo HTML sin servidor.
+
+---
+
+## ✨ Nuevas características v2.0
+
+| Módulo | Descripción |
+|--------|-------------|
+| 🧠 **IA + Claude** | Análisis de actividad → recomendación automática de método |
+| 🎬 **MediaPipe Pose** | Detección real de esqueleto en video + vectores de riesgo |
+| 📐 **8 Calculadoras** | REBA · RULA · NIOSH · OCRA · OWAS · JSI · RSI · OSHA |
+| 📊 **Dashboard** | Historial con gráficas Chart.js + estadísticas por nivel de riesgo |
+| 📋 **Reporte NOM-036** | PDF exportable con jsPDF + cumplimiento por artículo |
+| 📚 **Documentación** | Referencia técnica interactiva de todos los modelos |
+| 💾 **Persistencia** | localStorage — historial entre sesiones |
+
+---
+
+## 🚀 Inicio rápido
+
+```bash
+git clone https://github.com/tu-usuario/ergonom-036.git
+cd ergonom-036
+open index.html   # o python3 -m http.server 8080
+```
+
+No requiere npm, no requiere servidor, no requiere build step.
+
+---
+
+## 🔬 Métodos implementados
+
+### 1. REBA — Rapid Entire Body Assessment
+- Evalúa cuerpo completo con tablas A, B y C completas
+- Modificadores: carga, agarre, actividad muscular
+- Puntuación 1-15 con 5 niveles de riesgo
+- **Integrado con MediaPipe**: ángulos reales → puntuación automática
+
+### 2. RULA — Rapid Upper Limb Assessment
+- Grupos A (MMSS) y B (cuello/tronco/piernas)
+- Modificadores de fuerza y uso muscular
+- Puntuación 1-7
+
+### 3. NIOSH — Ecuación Revisada 1994
+- 6 multiplicadores: HM, VM, DM, AM, FM, CM
+- Cálculo de LPR e Índice de Levantamiento
+- Tabla FM completa por frecuencia y duración
+
+### 4. OCRA — Occupational Repetitive Actions
+- Índice OCRA con ATA observadas vs. referencia
+- Factores: frecuencia, fuerza, postura, adicionales, recuperación
+- Referenciado en ISO 11228-3
+
+### 5. OWAS — Ovako Working Posture Analysis
+- Código postural 4 dígitos (espalda-brazos-piernas-carga)
+- Tabla de categorías 1-4 completa
+- Ideal para muestreo de trabajo
+
+### 6. JSI — Job Strain Index
+- 6 multiplicadores para mano/muñeca/antebrazo distal
+- Umbrales: <3 seguro, 3-5 incierto, >5 peligroso
+
+### 7. RSI — Revised Strain Index
+- Versión revisada Moore et al. 2011
+- Incorpora % tiempo con muñeca desviada
+- Mayor precisión para TME de mano
+
+### 8. Check-List OSHA / NOM-036
+- 17 ítems ponderados por segmento y factor de riesgo
+- Categorías: cuello, hombros, espalda, muñeca, fuerza, repetitividad, ambiente
+- Puntuación porcentual para priorización
+
+---
+
+## 🎬 Integración MediaPipe Pose
+
+La app integra **MediaPipe Pose** directamente desde CDN. Cuando detecta pose real:
+
+- Dibuja 33 keypoints sobre el video en tiempo real
+- Colorea cada joint y conexión según nivel de riesgo (🟢🟡🔴)
+- Muestra el ángulo en grados junto a articulaciones clave
+- Alimenta automáticamente la calculadora REBA con los ángulos reales
+- Actualiza el panel de segmentos corporales frame a frame
+
+```
+Carga el video → MediaPipe detecta pose → Ángulos calculados → 
+REBA score automático → Distribución de riesgo actualizada
+```
+
+Si MediaPipe no está disponible (sin conexión), se activa una **simulación de pose** para demostración.
+
+---
+
+## 📂 Estructura del proyecto
+
+```
+ergonom-036/
+├── index.html          ← App completa (2,958 líneas, standalone)
+├── README.md
+├── LICENSE
+├── .gitignore
+└── docs/
+    ├── METODOS.md                   ← Referencia técnica de los 8 métodos
+    ├── INTEGRACION-MEDIAPIPE.md     ← Guía de integración pose real
+    └── NOM-036-RESUMEN.md           ← Resumen de artículos relevantes
+```
+
+---
+
+## 🗺️ Roadmap v3.0
+
+- [ ] Análisis de múltiples trabajadores en el mismo video
+- [ ] Exportación de video con overlay de vectores grabado
+- [ ] SNOOK Tables para empuje/jale
+- [ ] Liberty Mutual Tables
+- [ ] Modo PWA (offline)
+- [ ] Sincronización Firebase para equipos
+- [ ] Integración con IMSS / STPS reporting
+
+---
+
+## 📋 Artículos NOM-036-STPS-2018 cubiertos
+
+| Artículo | Tema | Módulo |
+|----------|------|--------|
+| Art. 8 | Identificación de factores de riesgo | Describir + IA |
+| Art. 9 | Evaluación cuantitativa | Calculadoras + Video |
+| Art. 14 | Medidas de prevención | Reporte |
+| Art. 16 | Rotación y recuperación | Plan de acción |
+| Art. 20 | Registros documentales | Dashboard + PDF |
+
+---
+
+## 📄 Licencia
+
+MIT © 2025 — ErgoNOM
+
+> Herramienta de apoyo profesional. No reemplaza la evaluación de un especialista certificado en ergonomía.
+
+# Guía de integración: MediaPipe Pose
+
+Esta guía explica cómo reemplazar el simulador de pose (`poseSimulator.js`) por
+detección de pose **real** usando [MediaPipe Pose](https://developers.google.com/mediapipe/solutions/vision/pose_landmarker)
+directamente en el navegador, sin servidor.
+
+---
+
+## 1. Instalar / cargar MediaPipe
+
+### Opción A — CDN (más rápida)
+```html
+<!-- En index.html, antes de cerrar </body> -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+```
+
+### Opción B — npm
+```bash
+npm install @mediapipe/pose @mediapipe/camera_utils
+```
+
+---
+
+## 2. Inicializar el detector de pose
+
+```javascript
+// En VideoAnalyzer.js, dentro de loadFile()
+import { Pose } from '@mediapipe/pose';
+
+const pose = new Pose({
+  locateFile: (file) =>
+    `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`,
+});
+
+pose.setOptions({
+  modelComplexity: 1,       // 0=lite, 1=full, 2=heavy
+  smoothLandmarks: true,
+  enableSegmentation: false,
+  minDetectionConfidence: 0.5,
+  minTrackingConfidence: 0.5,
+});
+
+pose.onResults((results) => {
+  if (!results.poseLandmarks) return;
+  const landmarks = results.poseLandmarks; // Array de 33 puntos
+  onPoseFrame(landmarks);
+});
+```
+
+---
+
+## 3. Mapeo de landmarks MediaPipe → joints ErgoNOM
+
+MediaPipe retorna 33 landmarks. Este es el mapeo recomendado:
+
+| ErgoNOM joint | MediaPipe índice | Nombre MediaPipe        |
+|---------------|-----------------|-------------------------|
+| `nariz`       | 0               | NOSE                    |
+| `ojo_i`       | 2               | LEFT_EYE                |
+| `ojo_d`       | 5               | RIGHT_EYE               |
+| `hombro_i`    | 11              | LEFT_SHOULDER           |
+| `hombro_d`    | 12              | RIGHT_SHOULDER          |
+| `codo_i`      | 13              | LEFT_ELBOW              |
+| `codo_d`      | 14              | RIGHT_ELBOW             |
+| `muñeca_i`    | 15              | LEFT_WRIST              |
+| `muñeca_d`    | 16              | RIGHT_WRIST             |
+| `cadera_i`    | 23              | LEFT_HIP                |
+| `cadera_d`    | 24              | RIGHT_HIP               |
+| `rodilla_i`   | 25              | LEFT_KNEE               |
+| `rodilla_d`   | 26              | RIGHT_KNEE              |
+| `tobillo_i`   | 27              | LEFT_ANKLE              |
+| `tobillo_d`   | 28              | RIGHT_ANKLE             |
+
+```javascript
+// Función de conversión
+function landmarksToJoints(landmarks, canvasW, canvasH) {
+  const idx = {
+    nariz: 0, ojo_i: 2, ojo_d: 5,
+    hombro_i: 11, hombro_d: 12,
+    codo_i: 13, codo_d: 14,
+    muñeca_i: 15, muñeca_d: 16,
+    cadera_i: 23, cadera_d: 24,
+    rodilla_i: 25, rodilla_d: 26,
+    tobillo_i: 27, tobillo_d: 28,
+  };
+
+  const joints = {};
+  for (const [name, i] of Object.entries(idx)) {
+    const lm = landmarks[i];
+    if (lm && lm.visibility > 0.5) {
+      joints[name] = [lm.x * canvasW, lm.y * canvasH];
+    }
+  }
+  return joints;
+}
+```
+
+---
+
+## 4. Calcular ángulos reales para REBA / RULA
+
+```javascript
+/**
+ * Calcula el ángulo en grados entre tres puntos (A→B→C).
+ * B es el vértice (articulación).
+ */
+function angleBetween(A, B, C) {
+  const vBA = [A[0] - B[0], A[1] - B[1]];
+  const vBC = [C[0] - B[0], C[1] - B[1]];
+
+  const dot     = vBA[0]*vBC[0] + vBA[1]*vBC[1];
+  const magBA   = Math.hypot(...vBA);
+  const magBC   = Math.hypot(...vBC);
+  const cosAngle = dot / (magBA * magBC);
+
+  return Math.round(Math.acos(Math.min(1, Math.max(-1, cosAngle))) * (180 / Math.PI));
+}
+
+// Ejemplo: ángulo de codo izquierdo
+function onPoseFrame(landmarks) {
+  const joints = landmarksToJoints(landmarks, canvas.width, canvas.height);
+
+  const elbowAngle = angleBetween(
+    joints.hombro_i,
+    joints.codo_i,
+    joints.muñeca_i,
+  );
+
+  const neckAngle  = angleBetween(
+    joints.hombro_i,  // aproximación de hombro como referencia
+    joints.nariz,
+    [joints.nariz[0], joints.nariz[1] + 50], // vertical
+  );
+
+  // Pasar a riskScorer
+  const rebaResult = calculateREBA({
+    neckAngle,
+    upperArmAngle: 180 - elbowAngle,
+    // ... resto de ángulos
+  });
+
+  // Renderizar con los joints reales
+  renderSkeleton(ctx, 0, joints);
+}
+```
+
+---
+
+## 5. Procesar video frame a frame
+
+```javascript
+// Enviar cada frame al detector de pose
+async function processVideoFrames(videoEl, pose) {
+  const sendFrame = async () => {
+    if (videoEl.paused || videoEl.ended) return;
+    await pose.send({ image: videoEl });
+    requestAnimationFrame(sendFrame);
+  };
+
+  videoEl.addEventListener('play', sendFrame);
+}
+```
+
+---
+
+## Resultado esperado
+
+Con esta integración obtendrás:
+- Puntos de esqueleto detectados en tiempo real sobre el video
+- Ángulos articulares calculados automáticamente
+- Puntuación REBA / RULA actualizada frame a frame
+- Distribución de riesgo acumulada durante toda la tarea
+
+---
+
+## Recursos
+
+- [MediaPipe Pose — Documentación](https://developers.google.com/mediapipe/solutions/vision/pose_landmarker)
+- [MoveNet (TensorFlow.js)](https://www.tensorflow.org/hub/tutorials/movenet) — alternativa más rápida
+- [OpenPose](https://github.com/CMU-Perceptual-Computing-Lab/openpose) — para procesamiento en servidor
+
+# Métodos ergonómicos — Referencia rápida
+
+Resumen de los métodos implementados en ErgoNOM y su aplicación según la NOM-036-STPS-2018.
+
+---
+
+## REBA — Rapid Entire Body Assessment
+
+**Autor:** Hignett & McAtamney (2000)  
+**Aplicación:** Evaluación del riesgo de trastornos musculoesqueléticos en tareas que involucran el cuerpo completo.
+
+### Cuándo usarlo
+- Trabajo de pie con postura variable
+- Tareas con carga o esfuerzo físico
+- Sectores: manufactura, salud, construcción, almacén
+
+### Segmentos evaluados
+Grupo A: Tronco, cuello, piernas  
+Grupo B: Brazo superior, antebrazo, muñeca
+
+### Puntuación e interpretación
+
+| Puntuación | Nivel de riesgo | Acción |
+|-----------|----------------|--------|
+| 1 | Negligible | Sin acción necesaria |
+| 2–3 | Bajo | Puede necesitar cambios |
+| 4–7 | Medio | Investigar y cambiar pronto |
+| 8–10 | Alto | Cambio a corto plazo |
+| 11–15 | Muy alto | Cambio inmediato |
+
+---
+
+## RULA — Rapid Upper Limb Assessment
+
+**Autor:** McAtamney & Corlett (1993)  
+**Aplicación:** Evaluación de carga musculoesquelética en miembros superiores.
+
+### Cuándo usarlo
+- Trabajo de oficina / pantallas
+- Ensamble fino o de precisión
+- Trabajo sedentario con uso intensivo de brazos
+
+### Puntuación
+
+| Puntuación | Acción |
+|-----------|--------|
+| 1–2 | Sin cambios |
+| 3–4 | Cambios en el futuro próximo |
+| 5–6 | Investigar y cambiar pronto |
+| 7 | Cambio inmediato |
+
+---
+
+## NIOSH — Ecuación Revisada de NIOSH (1994)
+
+**Aplicación:** Evaluación de levantamiento manual de cargas.
+
+### Variables requeridas
+- **H** — Distancia horizontal manos–tobillo (cm)
+- **V** — Altura vertical de manos al inicio (cm)
+- **D** — Distancia vertical del recorrido (cm)
+- **A** — Ángulo de asimetría (grados)
+- **F** — Frecuencia de levantamientos/minuto
+- **C** — Tipo de agarre (bueno / regular / pobre)
+
+### Indicadores de resultado
+
+| IL (Índice de Levantamiento) | Interpretación |
+|-----------------------------|----------------|
+| ≤ 1.0 | Tarea segura |
+| 1.0 – 2.0 | Incrementar control |
+| > 2.0 | Rediseño urgente |
+
+---
+
+## OCRA — Occupational Repetitive Actions
+
+**Autor:** Occhipinti (1998) / ISO 11228-3  
+**Aplicación:** Trabajo repetitivo de miembros superiores por ciclos.
+
+### Índice OCRA
+
+| Índice | Clasificación |
+|--------|---------------|
+| ≤ 7.5 | Aceptable |
+| 7.6 – 11 | Zona roja muy leve |
+| 11.1 – 22.5 | Riesgo medio |
+| > 22.5 | Riesgo alto |
+
+---
+
+## OWAS — Ovako Working Posture Analysis System
+
+**Autor:** Karhu et al. (1977)  
+**Aplicación:** Clasificación sistemática de posturas globales.
+
+### Categorías de acción
+
+| Categoría | Significado |
+|-----------|------------|
+| 1 | No requiere acción |
+| 2 | Acción en el futuro |
+| 3 | Acción a corto plazo |
+| 4 | Acción inmediata |
+
+---
+
+## JSI — Job Strain Index
+
+**Autor:** Moore & Garg (1995)  
+**Aplicación:** Riesgo de TME en mano, muñeca y antebrazo distal.
+
+### Multiplicadores (6 factores)
+1. Intensidad del esfuerzo (IE)
+2. Duración del esfuerzo por ciclo (DE)
+3. Esfuerzos por minuto (EM)
+4. Postura de la muñeca (PW)
+5. Velocidad del trabajo (SW)
+6. Duración de la tarea por día (DD)
+
+### Interpretación
+
+| JSI | Clasificación |
+|-----|---------------|
+| ≤ 3 | Seguro |
+| 3 – 5 | No determinado |
+| > 5 | Peligroso |
+
+---
+
+## Selección del método según NOM-036-STPS-2018
+
+```
+¿Hay manejo manual de cargas?
+  └─ SÍ → NIOSH (obligatorio)
+  └─ NO ↓
+
+¿Predominan extremidades superiores?
+  ├─ Trabajo de precisión/oficina → RULA
+  ├─ Alta repetitividad → OCRA / JSI
+  └─ Cuerpo completo → REBA / OWAS
+```
