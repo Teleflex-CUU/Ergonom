@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ErgoNOM v2 · NOM-036-STPS-2018 · Teleflex</title>
+<title>ErgoNOM v2.5 · Teleflex CUU</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -11,196 +11,294 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
 <style>
-    /* Estilos base (Mantenidos de tu original) */
     :root {
-        --tf-blue: #005B9A; --bg: #F0F4F8; --surface: #FFFFFF;
+        --tf-blue: #005B9A; --tf-blue-light: #E8F4FF; --bg: #F0F4F8; --surface: #FFFFFF;
         --accent: #005B9A; --risk-low: #16A34A; --risk-med: #D97706; --risk-high: #DC2626;
+        --text: #1A2332; --text2: #4A5568; --text3: #8896A7;
         --font-ui: 'Inter', sans-serif; --font-data: 'Space Mono', monospace;
-        --r-md: 10px; --r-lg: 14px;
+        --r-md: 10px; --r-lg: 14px; --border: #DDE3EA;
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: var(--font-ui); background: var(--bg); color: #1A2332; }
+    body { font-family: var(--font-ui); background: var(--bg); color: var(--text); overflow: hidden; }
     
-    /* Layout */
-    .app-shell { display: grid; grid-template-columns: 220px 1fr; grid-template-rows: 60px 1fr; min-height: 100vh; }
-    .topbar { grid-column: 1 / -1; background: var(--tf-blue); color: #fff; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; }
-    .sidebar { background: #fff; border-right: 1px solid #DDE3EA; padding: 20px 0; }
-    .nav-item { padding: 12px 20px; cursor: pointer; font-size: 14px; transition: 0.2s; border-left: 4px solid transparent; }
-    .nav-item.active { background: #E8F4FF; color: var(--tf-blue); border-left-color: var(--tf-blue); font-weight: 600; }
+    .app-shell { display: grid; grid-template-columns: 240px 1fr; grid-template-rows: 60px 1fr; height: 100vh; }
+    .topbar { grid-column: 1 / -1; background: var(--tf-blue); color: #fff; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; z-index: 100; }
+    .sidebar { background: #fff; border-right: 1px solid var(--border); padding: 20px 0; }
+    .nav-item { padding: 12px 20px; cursor: pointer; font-size: 14px; transition: 0.2s; border-left: 4px solid transparent; color: var(--text2); }
+    .nav-item:hover { background: var(--tf-blue-light); color: var(--tf-blue); }
+    .nav-item.active { background: var(--tf-blue-light); color: var(--tf-blue); border-left-color: var(--tf-blue); font-weight: 600; }
     
-    /* Pages */
-    .page { display: none; padding: 30px; }
-    .page.active { display: block; }
-    .card { background: #fff; border: 1px solid #DDE3EA; border-radius: var(--r-lg); padding: 20px; margin-bottom: 20px; }
+    .content { overflow-y: auto; position: relative; }
+    .page { display: none; padding: 25px; }
+    .page.active { display: block; animation: fadeIn 0.3s; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     
-    /* Video & Canvas Area */
-    .canvas-box { position: relative; background: #000; border-radius: 12px; overflow: hidden; max-width: 800px; }
-    #videoEl { width: 100%; display: block; }
-    #poseCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; cursor: crosshair; }
-    
-    /* Botones y Form */
-    .btn { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; }
+    .card { background: #fff; border: 1px solid var(--border); border-radius: var(--r-lg); padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .card-title { font-size: 14px; font-weight: 700; color: var(--tf-blue); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+
+    /* Video Analysis */
+    .video-layout { display: grid; grid-template-columns: 1fr 320px; gap: 20px; }
+    .canvas-container { position: relative; background: #000; border-radius: 12px; overflow: hidden; display: flex; align-items: center; justify-content: center; min-height: 400px; }
+    #videoEl { max-width: 100%; max-height: 100%; }
+    #poseCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; cursor: crosshair; z-index: 10; }
+
+    /* Calculadora */
+    .calc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
+    .calc-item { border: 1px solid var(--border); padding: 15px; border-radius: 10px; transition: 0.2s; cursor: pointer; }
+    .calc-item:hover { border-color: var(--tf-blue); background: var(--tf-blue-light); }
+    .calc-name { font-weight: 700; font-size: 16px; margin-bottom: 5px; color: var(--tf-blue); }
+    .calc-desc { font-size: 12px; color: var(--text2); line-height: 1.4; }
+
+    /* Drive Config */
+    .drive-status { font-size: 11px; padding: 4px 10px; border-radius: 20px; background: #eee; }
+    .status-online { background: #E6F7EE; color: var(--risk-low); }
+
+    .btn { padding: 10px 18px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; gap: 8px; }
     .btn-primary { background: var(--tf-blue); color: #fff; }
-    textarea, input { width: 100%; padding: 10px; border: 1px solid #C8D3DE; border-radius: 8px; margin-top: 5px; }
+    .btn-outline { background: transparent; border: 1px solid var(--border); }
+    .hidden { display: none !important; }
 </style>
 </head>
 <body>
 
 <div class="app-shell">
     <header class="topbar">
-        <div class="logo">TELEFLEX <strong>Ergonomía</strong></div>
-        <div id="sync-status">Sincronizado Local</div>
+        <div style="font-weight:700; font-size:18px;">TELEFLEX <span style="font-weight:300;">ErgoNOM</span></div>
+        <div class="drive-status" id="driveStatus">Drive: No conectado</div>
     </header>
 
     <nav class="sidebar">
-        <div class="nav-item active" onclick="goPage('dashboard')">📊 Dashboard</div>
-        <div class="nav-item" onclick="goPage('describe')">🧠 Describir + IA</div>
-        <div class="nav-item" onclick="goPage('video')">🎬 Análisis Video</div>
+        <div class="nav-item active" onclick="goPage('video')">🎬 Análisis Video</div>
         <div class="nav-item" onclick="goPage('calc')">📐 Calculadora</div>
+        <div class="nav-item" onclick="goPage('dashboard')">📊 Historial</div>
+        <div class="nav-item" onclick="goPage('config')">⚙️ Configuración</div>
     </nav>
 
     <main class="content">
-        <section id="page-dashboard" class="page active">
-            <h2>Dashboard</h2>
-            <div class="card">Resumen de evaluaciones registradas.</div>
-        </section>
-
-        <section id="page-describe" class="page">
-            <h2>Descripción con IA</h2>
-            <div class="card">
-                <textarea id="desc-task" placeholder="Describe la tarea..."></textarea>
-                <input type="password" id="api-key-input" placeholder="Anthropic API Key" oninput="saveApiKey(this.value)">
-                <button class="btn btn-primary" onclick="analyzeWithAI()">Analizar con IA</button>
-            </div>
-        </section>
-
-        <section id="page-video" class="page">
-            <h2>Análisis de Video</h2>
-            <div class="card">
-                <input type="file" id="videoInput" accept="video/*" onchange="loadVideo(event)">
-                <div class="canvas-box" id="canvasBox">
-                    <video id="videoEl" playsinline></video>
-                    <canvas id="poseCanvas"></canvas>
-                </div>
-                <div id="annotInstr" style="margin-top:10px; color: var(--tf-blue);">Carga un video para comenzar.</div>
-            </div>
-        </section>
         
-        <section id="page-calc" class="page">
-            <h2>Calculadora Manual</h2>
-            <div class="card">Cálculos rápidos REBA/RULA.</div>
+        <section id="page-video" class="page active">
+            <div class="video-layout">
+                <div>
+                    <div class="card">
+                        <div class="card-title">Captura de Datos</div>
+                        <div style="display:flex; gap:10px; margin-bottom:15px;">
+                            <button class="btn btn-primary" onclick="startCamera()">📸 Activar Cámara Posterior</button>
+                            <button class="btn btn-outline" onclick="document.getElementById('videoInput').click()">📁 Subir Video</button>
+                            <input type="file" id="videoInput" class="hidden" accept="video/*" onchange="loadVideo(event)">
+                        </div>
+                        <div class="canvas-container">
+                            <video id="videoEl" playsinline muted></video>
+                            <canvas id="poseCanvas"></canvas>
+                        </div>
+                        <div id="annotToolbar" class="card" style="margin-top:15px; display:none;">
+                            <div id="jointsBtns" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap:5px;"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="analysis-sidebar">
+                    <div class="card" style="text-align:center;">
+                        <div style="font-size:12px; color:var(--text3);">Score REBA Estimado</div>
+                        <div style="font-size:48px; font-weight:800; color:var(--tf-blue);" id="scoreNum">--</div>
+                    </div>
+                    <button class="btn btn-primary" style="width:100%; justify-content:center;" onclick="saveToDrive()">💾 Guardar en Google Drive</button>
+                </div>
+            </div>
         </section>
+
+        <section id="page-calc" class="page">
+            <div class="card-title">Métodos Ergonómicos Disponibles</div>
+            <div class="calc-grid">
+                <div class="calc-item" onclick="alert('Abriendo REBA...')">
+                    <div class="calc-name">REBA</div>
+                    <div class="calc-desc">Evaluación de cuerpo completo para posturas dinámicas y estáticas. Ideal para cambios rápidos de posición.</div>
+                </div>
+                <div class="calc-item" onclick="alert('Abriendo RULA...')">
+                    <div class="calc-name">RULA</div>
+                    <div class="calc-desc">Enfocado en extremidades superiores. Ideal para trabajos de ensamble fino o trabajo en oficina.</div>
+                </div>
+                <div class="calc-item" onclick="alert('Abriendo NIOSH...')">
+                    <div class="calc-name">NIOSH</div>
+                    <div class="calc-desc">Cálculo de límite de peso recomendado para tareas de levantamiento de cargas.</div>
+                </div>
+                <div class="calc-item" onclick="alert('Abriendo OCRA...')">
+                    <div class="calc-name">OCRA</div>
+                    <div class="calc-desc">Análisis de movimientos repetitivos de alta frecuencia en miembros superiores.</div>
+                </div>
+                <div class="calc-item" onclick="alert('Abriendo OWAS...')">
+                    <div class="calc-name">OWAS</div>
+                    <div class="calc-desc">Método observacional para categorizar posturas de espalda, brazos y piernas en el trabajo.</div>
+                </div>
+                <div class="calc-item" onclick="alert('Abriendo JSI...')">
+                    <div class="calc-name">JSI (Job Strain Index)</div>
+                    <div class="calc-desc">Evalúa el riesgo de desórdenes en mano, muñeca y antebrazo por esfuerzos intensos.</div>
+                </div>
+                <div class="calc-item" onclick="alert('Abriendo GINSHT...')">
+                    <div class="calc-name">GINSHT</div>
+                    <div class="calc-desc">Guía técnica para la evaluación de riesgos por manipulación manual de cargas.</div>
+                </div>
+                <div class="calc-item" onclick="alert('Abriendo Snook & Ciriello...')">
+                    <div class="calc-name">Snook & Ciriello</div>
+                    <div class="calc-desc">Tablas de pesos máximos aceptables para empuje, tracción y transporte de cargas.</div>
+                </div>
+            </div>
+        </section>
+
+        <section id="page-config" class="page">
+            <div class="card">
+                <div class="card-title">Conexión con Google Drive</div>
+                <p style="font-size:13px; color:var(--text2); margin-bottom:15px;">Pega la URL de tu Google Apps Script para sincronizar las evaluaciones automáticamente.</p>
+                <input type="text" id="driveUrl" placeholder="https://script.google.com/macros/s/.../exec">
+                <button class="btn btn-primary" style="margin-top:10px;" onclick="saveDriveConfig()">Conectar Drive</button>
+            </div>
+        </section>
+
     </main>
 </div>
 
 <script>
-/** * ERGONÓMICO V2 - SCRIPT CORREGIDO
- * 1. Definición única de variables globales.
- * 2. Funciones asignadas a 'window' para evitar errores de scope.
- * 3. Lógica de coordenadas de ratón corregida.
- */
+'use strict';
 
-// --- ESTADO GLOBAL ---
+// --- CONFIGURACIÓN ---
+let videoEl, canvas, ctx;
 const APP = {
-    evaluations: JSON.parse(localStorage.getItem('ergonom_evals') || '[]'),
-    apiKey: sessionStorage.getItem('ergonom_api_key') || '',
+    driveUrl: localStorage.getItem('ergonom_drive_url') || '',
     points: {},
-    activeJoint: 'cuello' // Ejemplo de primer punto
+    activeJoint: null
 };
 
-// --- NODOS DE UI (Declarados una sola vez para evitar SyntaxError) ---
-let videoEl, canvas, ctx;
-let isRenderLoopActive = false;
+const JOINTS = [
+    {id:'neck', label:'1. Cuello'}, {id:'trunk', label:'2. Tronco'}, 
+    {id:'r_shoulder', label:'3. Hombro D'}, {id:'r_elbow', label:'4. Codo D'},
+    {id:'mid_hip', label:'5. Pelvis'}
+];
+
+document.addEventListener('DOMContentLoaded', () => {
+    videoEl = document.getElementById('videoEl');
+    canvas = document.getElementById('poseCanvas');
+    ctx = canvas.getContext('2d');
+    initJointsUI();
+    if(APP.driveUrl) updateDriveUI(true);
+});
 
 // --- NAVEGACIÓN ---
 window.goPage = function(id) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    
     document.getElementById('page-' + id).classList.add('active');
-    // Marcar item de menú (simplificado)
     event.currentTarget.classList.add('active');
 };
 
-// --- GESTIÓN DE API KEY ---
-window.saveApiKey = function(val) {
-    if (val.startsWith('sk-ant-')) {
-        sessionStorage.setItem('ergonom_api_key', val);
-        APP.apiKey = val;
+// --- CÁMARA POSTERIOR ---
+window.startCamera = async function() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+            // 'environment' fuerza la cámara trasera en dispositivos móviles
+            video: { facingMode: { exact: "environment" } }, 
+            audio: false
+        });
+        videoEl.srcObject = stream;
+        videoEl.play();
+        setupCanvas();
+    } catch (e) {
+        // Si falla el 'exact', intentamos el 'ideal' (por si es PC)
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        videoEl.srcObject = stream;
+        videoEl.play();
+        setupCanvas();
     }
 };
 
-// --- MOTOR DE VIDEO ---
-window.loadVideo = function(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    videoEl = document.getElementById('videoEl');
-    canvas = document.getElementById('poseCanvas');
-    ctx = canvas.getContext('2d');
-
+window.loadVideo = function(e) {
+    const file = e.target.files[0];
     videoEl.src = URL.createObjectURL(file);
-    videoEl.onloadedmetadata = () => {
-        canvas.width = videoEl.videoWidth;
-        canvas.height = videoEl.videoHeight;
-        document.getElementById('annotInstr').textContent = "Video cargado. Haz clic en las articulaciones.";
-        startRenderLoop();
-    };
+    videoEl.onloadedmetadata = () => { setupCanvas(); videoEl.play(); };
+};
 
-    // Evento de clic corregido para coordenadas exactas
-    canvas.onclick = function(e) {
-        const rect = canvas.getBoundingClientRect();
-        // Escalar coordenadas si el video se ve más pequeño que su tamaño real
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-        
-        const x = (e.clientX - rect.left) * scaleX;
-        const y = (e.clientY - rect.top) * scaleY;
+function setupCanvas() {
+    canvas.width = videoEl.videoWidth || videoEl.offsetWidth;
+    canvas.height = videoEl.videoHeight || videoEl.offsetHeight;
+    document.getElementById('annotToolbar').style.display = 'block';
+    startDrawLoop();
+}
 
-        APP.points[APP.activeJoint] = { x, y };
-        console.log("Punto guardado en:", x, y);
+// --- ANOTACIÓN MANUAL ---
+function initJointsUI() {
+    const container = document.getElementById('jointsBtns');
+    JOINTS.forEach(j => {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-outline';
+        btn.style.fontSize = '10px';
+        btn.textContent = j.label;
+        btn.onclick = () => APP.activeJoint = j.id;
+        container.appendChild(btn);
+    });
+}
+
+canvas.onclick = function(e) {
+    if(!APP.activeJoint) return;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    APP.points[APP.activeJoint] = {
+        x: (e.clientX - rect.left) * scaleX,
+        y: (e.clientY - rect.top) * scaleY
     };
 };
 
-function startRenderLoop() {
-    if (isRenderLoopActive) return;
-    isRenderLoopActive = true;
-    
+function startDrawLoop() {
     function render() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // Dibujar puntos guardados
-        for (let j in APP.points) {
-            const p = APP.points[j];
+        for(let id in APP.points) {
+            const p = APP.points[id];
             ctx.beginPath();
-            ctx.arc(p.x, p.y, 8, 0, Math.PI * 2);
-            ctx.fillStyle = "#D32F2F";
+            ctx.arc(p.x, p.y, 6, 0, Math.PI*2);
+            ctx.fillStyle = "#005B9A";
             ctx.fill();
-            ctx.strokeStyle = "white";
-            ctx.stroke();
         }
-        
         requestAnimationFrame(render);
     }
     render();
 }
 
-// --- INTELIGENCIA ARTIFICIAL ---
-window.analyzeWithAI = async function() {
-    const task = document.getElementById('desc-task').value;
-    if (!APP.apiKey) {
-        alert("Por favor ingresa tu API Key de Anthropic.");
-        return;
+// --- CONEXIÓN DRIVE ---
+window.saveDriveConfig = function() {
+    const url = document.getElementById('driveUrl').value;
+    if(url.includes('google.com')) {
+        localStorage.setItem('ergonom_drive_url', url);
+        APP.driveUrl = url;
+        updateDriveUI(true);
+        alert("✅ Conectado a Google Drive");
     }
-    alert("Analizando tarea: " + task + " (Conectando con Claude...)");
-    // Aquí iría el fetch a Anthropic
 };
 
-// Inicialización
-document.addEventListener('DOMContentLoaded', () => {
-    console.log("ErgoNOM v2 listo.");
-});
-</script>
+function updateDriveUI(online) {
+    const el = document.getElementById('driveStatus');
+    el.textContent = online ? "Drive: Conectado" : "Drive: No conectado";
+    if(online) el.classList.add('status-online');
+}
 
+window.saveToDrive = async function() {
+    if(!APP.driveUrl) { alert("⚠️ Primero configura la URL de Drive"); return; }
+    
+    const data = {
+        fecha: new Date().toLocaleString(),
+        puntos: APP.points,
+        metodo: "REBA_VIDEO"
+    };
+
+    try {
+        // Enviamos datos al Web App de Google Apps Script
+        await fetch(APP.driveUrl, {
+            method: 'POST',
+            mode: 'no-cors',
+            body: JSON.stringify(data),
+            headers: { 'Content-Type': 'application/json' }
+        });
+        alert("✅ Evaluación enviada a tu Google Drive");
+    } catch (e) {
+        alert("❌ Error al sincronizar");
+    }
+};
+</script>
 </body>
 </html>
