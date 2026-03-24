@@ -1,332 +1,1520 @@
 <!DOCTYPE html>
+
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Teleflex ErgoNOM v6.0 - Enterprise</title>
-    
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Teleflex ErgoNOM v6.0 — NOM-036-STPS-2018</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
-    <style>
-        :root {
-            --tf-blue: #005B9A; --bg: #F8FAFC; --surface: #FFFFFF;
-            --risk-low: #16A34A; --risk-med: #D97706; --risk-high: #DC2626;
-            --border: #CBD5E1; --text: #0F172A;
-        }
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
-        body { background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
-        
-        .topbar { background: var(--tf-blue); color: white; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; z-index: 100; }
-        .main-container { display: grid; grid-template-columns: 240px 1fr; flex-grow: 1; overflow: hidden; }
-        
-        .sidebar { background: white; border-right: 1px solid var(--border); padding: 15px 0; }
-        .nav-item { padding: 15px 25px; cursor: pointer; color: #64748B; border-left: 5px solid transparent; font-size: 14px; }
-        .nav-item.active { background: #F1F5F9; color: var(--tf-blue); border-left-color: var(--tf-blue); font-weight: 700; }
+<style>
+:root {
+  --tf-blue:      #005B9A;
+  --tf-blue-dk:   #004477;
+  --tf-blue-lt:   #E8F4FF;
+  --tf-green:     #00A651;
+  --bg:           #F0F4F8;
+  --surface:      #FFFFFF;
+  --surface2:     #F7FAFC;
+  --border:       #DDE3EA;
+  --border2:      #C8D3DE;
+  --text:         #1A2332;
+  --text2:        #4A5568;
+  --text3:        #8896A7;
+  --risk-low:     #16A34A;
+  --risk-low-bg:  rgba(22,163,74,0.09);
+  --risk-med:     #D97706;
+  --risk-med-bg:  rgba(217,119,6,0.09);
+  --risk-high:    #DC2626;
+  --risk-high-bg: rgba(220,38,38,0.09);
+  --font: 'Inter', sans-serif;
+  --mono: 'Space Mono', monospace;
+}
 
-        .content { padding: 20px; overflow-y: auto; }
-        .page { display: none; }
-        .page.active { display: block; }
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:var(--font);background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display:flex;flex-direction:column;}
 
-        .card { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .section-title { font-size: 12px; font-weight: 700; color: var(--tf-blue); text-transform: uppercase; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+/* ─── TOPBAR ─── */
+.topbar{background:var(--tf-blue);color:#fff;padding:0 20px;height:54px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 2px 8px rgba(0,91,154,.3);flex-shrink:0;z-index:200;}
+.topbar-logo{display:flex;align-items:center;gap:10px;}
+.topbar-mark{background:#fff;color:var(--tf-blue);font-weight:700;font-size:11px;padding:4px 8px;border-radius:5px;letter-spacing:.5px;}
+.topbar-title{font-size:15px;font-weight:600;}
+.topbar-sub{font-size:11px;opacity:.7;}
+.topbar-actions{display:flex;gap:8px;}
 
-        .grid-forms { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
-        
-        .workspace { position: relative; background: #000; border-radius: 12px; overflow: hidden; min-height: 450px; display: flex; align-items: center; justify-content: center; touch-action: none; }
-        #canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; touch-action: none; }
-        #videoSource, #imageSource { max-width: 100%; max-height: 100%; display: none; }
+/* ─── LAYOUT ─── */
+.shell{display:grid;grid-template-columns:220px 1fr;flex:1;overflow:hidden;}
 
-        .btn { padding: 10px 18px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; font-size: 13px; transition: 0.2s; display: inline-flex; align-items: center; gap: 8px; }
-        .btn-primary { background: var(--tf-blue); color: white; }
-        .btn-danger { background: #EF4444; color: white; }
-        .btn-outline { background: white; border: 1px solid var(--border); }
-        
-        label { font-size: 12px; font-weight: 600; color: #475569; }
-        select, input, textarea { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; margin-top: 5px; font-size: 14px; background: #fff; }
+/* ─── SIDEBAR ─── */
+.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:16px 0;overflow-y:auto;box-shadow:2px 0 6px rgba(0,0,0,.04);}
+.sidebar-section{font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--text3);padding:12px 18px 5px;text-transform:uppercase;}
+.nav-item{display:flex;align-items:center;gap:9px;padding:11px 18px;cursor:pointer;color:var(--text2);border-left:3px solid transparent;font-size:13px;font-weight:500;transition:.15s;}
+.nav-item:hover{color:var(--tf-blue);background:var(--tf-blue-lt);}
+.nav-item.active{color:var(--tf-blue);border-left-color:var(--tf-blue);background:var(--tf-blue-lt);font-weight:700;}
+.nav-badge{margin-left:auto;background:var(--tf-blue);color:#fff;font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;min-width:20px;text-align:center;}
 
-        .survey-container { background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid var(--border); display: none; }
-    </style>
+/* ─── CONTENT ─── */
+.content{overflow-y:auto;padding:22px;}
+.page{display:none;}
+.page.active{display:block;animation:fadeIn .2s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+
+/* ─── CARDS ─── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:18px;box-shadow:0 1px 4px rgba(0,0,0,.05);}
+.card-title{font-size:11px;font-weight:700;color:var(--tf-blue);text-transform:uppercase;letter-spacing:.8px;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:7px;}
+.card-title::before{content:'';display:block;width:3px;height:14px;background:var(--tf-blue);border-radius:2px;}
+
+/* ─── BUTTONS ─── */
+.btn{padding:9px 16px;border-radius:8px;border:none;cursor:pointer;font-weight:600;font-size:13px;display:inline-flex;align-items:center;gap:7px;transition:.18s;font-family:var(--font);}
+.btn-primary{background:var(--tf-blue);color:#fff;}
+.btn-primary:hover{background:var(--tf-blue-dk);transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,91,154,.25);}
+.btn-success{background:var(--tf-green);color:#fff;}
+.btn-success:hover{filter:brightness(1.08);}
+.btn-danger{background:#DC2626;color:#fff;}
+.btn-danger:hover{background:#B91C1C;}
+.btn-outline{background:var(--surface);border:1px solid var(--border2);color:var(--text2);}
+.btn-outline:hover{border-color:var(--tf-blue);color:var(--tf-blue);background:var(--tf-blue-lt);}
+.btn-sm{padding:6px 12px;font-size:12px;}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+
+/* ─── FORMS ─── */
+label{font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px;}
+input,select,textarea{width:100%;padding:9px 12px;border:1px solid var(--border2);border-radius:7px;font-size:13px;font-family:var(--font);background:var(--surface);color:var(--text);outline:none;transition:border-color .2s;}
+input:focus,select:focus,textarea:focus{border-color:var(--tf-blue);box-shadow:0 0 0 3px rgba(0,91,154,.1);}
+textarea{resize:vertical;min-height:80px;}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;}
+.form-group{display:flex;flex-direction:column;gap:4px;}
+
+/* ─── VIDEO WORKSPACE ─── */
+.workspace{position:relative;background:#111;border-radius:10px;overflow:hidden;min-height:420px;display:flex;align-items:center;justify-content:center;}
+.workspace-placeholder{text-align:center;color:#666;pointer-events:none;}
+.workspace-placeholder .icon{font-size:48px;margin-bottom:10px;opacity:.4;}
+.workspace-placeholder p{font-size:13px;opacity:.5;}
+#videoEl{max-width:100%;max-height:100%;display:none;border-radius:10px;}
+#imgEl{max-width:100%;max-height:100%;display:none;border-radius:10px;}
+#poseCanvas{position:absolute;top:0;left:0;width:100%;height:100%;z-index:10;cursor:crosshair;}
+
+/* ─── VIDEO CONTROLS ─── */
+.video-ctrl{display:flex;align-items:center;gap:8px;padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-top:8px;}
+.prog-bar{flex:1;height:4px;background:var(--border2);border-radius:2px;cursor:pointer;overflow:hidden;}
+.prog-fill{height:100%;background:var(--tf-blue);border-radius:2px;width:0%;transition:width .1s;}
+.ctrl-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text2);padding:5px 10px;border-radius:5px;cursor:pointer;font-size:12px;transition:.15s;}
+.ctrl-btn:hover{border-color:var(--tf-blue);color:var(--tf-blue);}
+
+/* ─── RESULTS PANEL ─── */
+.result-hero{text-align:center;padding:18px;border-radius:10px;margin-bottom:14px;transition:.3s;}
+.result-hero .score{font-size:56px;font-weight:900;line-height:1;font-family:var(--mono);}
+.result-hero .score-label{font-size:13px;font-weight:600;margin-top:4px;opacity:.85;}
+.result-hero .score-action{font-size:11px;margin-top:3px;opacity:.75;}
+
+.result-bg-low  {background:var(--risk-low-bg); border:1px solid rgba(22,163,74,.25);}
+.result-bg-med  {background:var(--risk-med-bg); border:1px solid rgba(217,119,6,.25);}
+.result-bg-high {background:var(--risk-high-bg);border:1px solid rgba(220,38,38,.25);}
+.result-bg-none {background:var(--surface2);    border:1px solid var(--border);}
+
+.angle-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
+.angle-box{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center;}
+.angle-box .seg{font-size:10px;color:var(--text3);margin-bottom:3px;font-weight:600;text-transform:uppercase;}
+.angle-box .val{font-size:22px;font-weight:700;font-family:var(--mono);}
+
+/* ─── ANNOTATION ─── */
+.joint-btn{padding:5px 10px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;border:2px solid transparent;transition:.15s;font-family:var(--mono);}
+.joint-btn.active{outline:3px solid #fff;outline-offset:1px;}
+.joint-btns{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;}
+
+/* ─── SURVEY ─── */
+.survey-q{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;}
+.survey-q label{color:var(--text);font-size:13px;font-weight:600;margin-bottom:8px;display:block;}
+.radio-group{display:flex;flex-direction:column;gap:5px;}
+.radio-row{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;padding:4px 6px;border-radius:5px;transition:.1s;}
+.radio-row:hover{background:var(--tf-blue-lt);}
+.radio-row input{width:auto;margin:0;}
+
+/* ─── SCORE BREAKDOWN ─── */
+.sb-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px;}
+.sb-row:last-child{border:none;font-weight:700;}
+.sb-k{color:var(--text2);}
+.sb-v{font-family:var(--mono);font-weight:700;}
+
+/* ─── HISTORY TABLE ─── */
+.hist-table{width:100%;border-collapse:collapse;font-size:13px;}
+.hist-table th{font-family:var(--mono);font-size:9px;letter-spacing:1.5px;color:var(--text3);padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);}
+.hist-table td{padding:9px 12px;border-bottom:1px solid rgba(0,0,0,.04);vertical-align:middle;}
+.hist-table tr:hover td{background:var(--surface2);}
+.risk-pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;font-family:var(--mono);}
+.pill-low {background:var(--risk-low-bg);color:var(--risk-low);}
+.pill-med {background:var(--risk-med-bg);color:var(--risk-med);}
+.pill-high{background:var(--risk-high-bg);color:var(--risk-high);}
+
+/* ─── STAT CARDS ─── */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.04);}
+.stat-card .val{font-size:32px;font-weight:700;font-family:var(--mono);color:var(--tf-blue);}
+.stat-card .lbl{font-size:11px;color:var(--text3);margin-top:2px;}
+
+/* ─── CHART ─── */
+.chart-wrap{position:relative;height:200px;}
+
+/* ─── CAMERA BADGE ─── */
+.cam-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-family:var(--mono);color:var(--text3);padding:4px 0;}
+.cam-dot{width:7px;height:7px;border-radius:50%;background:var(--text3);}
+.cam-dot.live{background:var(--tf-green);box-shadow:0 0 6px var(--tf-green);animation:pulse 1.2s infinite;}
+@keyframes pulse{0%,100%{opacity:.5}50%{opacity:1}}
+
+/* ─── RULA/REBA SLIDER ─── */
+input[type=range]{-webkit-appearance:none;width:100%;height:4px;background:var(--border2);border-radius:2px;outline:none;border:none;padding:0;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--tf-blue);cursor:pointer;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,91,154,.3);}
+.slider-header{display:flex;justify-content:space-between;margin-bottom:5px;}
+.slider-val{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--tf-blue);}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+
+/* Responsive */
+@media(max-width:768px){
+  .shell{grid-template-columns:1fr;}
+  .sidebar{display:none;}
+  .stats-row{grid-template-columns:1fr 1fr;}
+}
+</style>
+
 </head>
 <body>
 
+<!-- ══════ TOPBAR ══════ -->
+
 <header class="topbar">
-    <div style="font-weight:700; font-size:16px;">Teleflex ErgoNOM <span style="font-weight:300;">v6.0 Enterprise</span></div>
-    <div style="display:flex; gap:10px;">
-        <button class="btn btn-outline" onclick="exportToExcel()">📊 Exportar Base Datos</button>
+  <div class="topbar-logo">
+    <div class="topbar-mark">TELEFLEX</div>
+    <div>
+      <div class="topbar-title">ErgoNOM <span style="font-weight:300;">v6.0 Enterprise</span></div>
+      <div class="topbar-sub">NOM-036-STPS-2018 · Salud Ocupacional CUU</div>
     </div>
+  </div>
+  <div class="topbar-actions">
+    <button class="btn btn-outline btn-sm" style="color:#fff;border-color:rgba(255,255,255,.4);" onclick="exportToExcel()">📊 Exportar Excel</button>
+    <button class="btn btn-outline btn-sm" style="color:#fff;border-color:rgba(255,255,255,.4);" onclick="showPage('page-history')">📋 Historial (<span id="hist-count">0</span>)</button>
+  </div>
 </header>
 
-<div class="main-container">
-    <nav class="sidebar">
-        <div class="nav-item active" onclick="showPage('page-station', this)">🏭 Datos Estación</div>
-        <div class="nav-item" onclick="showPage('page-video', this)">🎬 Análisis Video/Foto</div>
-        <div class="nav-item" onclick="showPage('page-manual', this)">📝 Evaluación Manual</div>
-    </nav>
+<!-- ══════ SHELL ══════ -->
 
-    <main class="content">
-        <!-- PÁGINA 1: DATOS DE LA ESTACIÓN -->
-        <section id="page-station" class="page active">
-            <div class="card">
-                <div class="section-title">Perfil de la Estación de Trabajo</div>
-                <div class="grid-forms">
-                    <div><label>Compañía</label><input type="text" id="st-company" value="Teleflex"></div>
-                    <div><label>Planta</label><input type="text" id="st-plant" placeholder="Ej: Planta Norte"></div>
-                    <div><label>Área</label><input type="text" id="st-area" placeholder="Ej: Ensamble"></div>
-                    <div><label>Nombre del Puesto</label><input type="text" id="st-job" placeholder="Ej: Operador de Prensa"></div>
-                </div>
-            </div>
-            <div class="card">
-                <div class="section-title">Instrucciones</div>
-                <p style="font-size: 14px; color: #64748B;">1. Complete los datos de la estación arriba.<br>2. Realice el análisis mediante video en vivo o subiendo una fotografía.<br>3. O bien, utilice la pestaña de Evaluación Manual para aplicar criterios técnicos específicos.</p>
-            </div>
-        </section>
+<div class="shell">
 
-        <!-- PÁGINA 2: ANÁLISIS DE VIDEO -->
-        <section id="page-video" class="page">
-            <div style="display:grid; grid-template-columns: 1fr 320px; gap:20px;">
-                <div>
-                    <div class="card">
-                        <div style="display:flex; gap:10px; margin-bottom:15px; flex-wrap: wrap;">
-                            <button class="btn btn-outline" onclick="document.getElementById('fileIn').click()">📁 Subir Archivo</button>
-                            <input type="file" id="fileIn" hidden onchange="loadMedia(event)">
-                            <button class="btn btn-primary" onclick="toggleVideo()">⏯ Pausar/Play</button>
-                            <button class="btn btn-danger" onclick="clearVideo()">🗑 Borrar/Limpiar</button>
-                            <button class="btn btn-primary" onclick="runAutoDetection()">🤖 Auto-Detectar</button>
-                        </div>
-                        <div class="workspace" id="workspace">
-                            <video id="videoSource" playsinline muted loop></video>
-                            <img id="imageSource">
-                            <canvas id="canvas"></canvas>
-                        </div>
-                    </div>
-                </div>
-                <div>
-                    <div class="card">
-                        <div class="section-title">Resultado Biomecánico</div>
-                        <div id="risk-label" style="font-size:32px; font-weight:900; text-align:center; padding:10px; border-radius:8px;">---</div>
-                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:15px; text-align:center;">
-                            <div style="font-size:12px;">Tronco:<br><b id="m-tronco">0°</b></div>
-                            <div style="font-size:12px;">Brazo:<br><b id="m-brazo">0°</b></div>
-                        </div>
-                        <button class="btn btn-primary" style="width:100%; margin-top:20px;" onclick="generatePDF('video')">📄 Generar Reporte PDF</button>
-                    </div>
-                </div>
-            </div>
-        </section>
+  <!-- SIDEBAR -->
 
-        <!-- PÁGINA 3: EVALUACIÓN MANUAL -->
-        <section id="page-manual" class="page">
-            <div class="card">
-                <div class="section-title">Selección de Herramienta</div>
-                <select id="toolSelector" onchange="loadSurvey()">
-                    <option value="">-- Seleccione una Herramienta --</option>
-                    <option value="RULA">RULA (Puestos Administrativos/Ensamble)</option>
-                    <option value="REBA">REBA (Cuerpo Entero/Salud)</option>
-                    <option value="NOM036">NOM-036-STPS (Manejo de Carga)</option>
-                    <option value="NIOSH">NIOSH (Levantamiento)</option>
-                </select>
-            </div>
+  <nav class="sidebar">
+    <div class="sidebar-section">Evaluación</div>
+    <div class="nav-item active" id="nav-station" onclick="showPage('page-station')">🏭 Datos Estación</div>
+    <div class="nav-item" id="nav-video" onclick="showPage('page-video')">🎬 Video / Foto</div>
+    <div class="nav-item" id="nav-manual" onclick="showPage('page-manual')">📝 Evaluación Manual</div>
 
-            <div id="surveyBox" class="card survey-container">
-                <div id="surveyTitle" style="font-weight:700; margin-bottom:15px; color:var(--tf-blue);"></div>
-                <div id="surveyFields" style="display:grid; grid-template-columns:1fr; gap:15px;"></div>
-                <button class="btn btn-primary" style="margin-top:20px;" onclick="generatePDF('manual')">📄 Generar Reporte PDF</button>
+```
+<div class="sidebar-section">Resultados</div>
+<div class="nav-item" id="nav-history" onclick="showPage('page-history')">📋 Historial <span class="nav-badge" id="nb-hist">0</span></div>
+<div class="nav-item" id="nav-dashboard" onclick="showPage('page-dashboard')">📊 Dashboard</div>
+
+<div style="margin-top:auto;padding:16px 18px;border-top:1px solid var(--border);margin-top:24px;">
+  <div style="font-size:11px;font-weight:700;color:var(--tf-blue);margin-bottom:4px;">HERRAMIENTAS</div>
+  <div style="font-family:var(--mono);font-size:9px;color:var(--text3);line-height:1.9;">
+    REBA · RULA · NIOSH<br>OCRA · OWAS · JSI<br>NOM-036-STPS-2018<br>Anotación manual · PDF
+  </div>
+</div>
+```
+
+  </nav>
+
+  <!-- CONTENT -->
+
+  <main class="content">
+
+```
+<!-- ════ PAGE 1: ESTACIÓN ════ -->
+<section id="page-station" class="page active">
+  <div class="card">
+    <div class="card-title">Perfil de la Estación de Trabajo</div>
+    <div class="form-grid">
+      <div class="form-group"><label>Compañía</label><input id="st-company" value="Teleflex"></div>
+      <div class="form-group"><label>Planta</label><input id="st-plant" placeholder="Ej: Planta Norte"></div>
+      <div class="form-group"><label>Área / Departamento</label><input id="st-area" placeholder="Ej: Ensamble línea A"></div>
+      <div class="form-group"><label>Nombre del Puesto</label><input id="st-job" placeholder="Ej: Operador de prensa"></div>
+      <div class="form-group"><label>No. Empleado</label><input id="st-emp" placeholder="Ej: 12345"></div>
+      <div class="form-group"><label>Evaluador</label><input id="st-evaluator" placeholder="Nombre del evaluador"></div>
+      <div class="form-group"><label>Turno</label>
+        <select id="st-shift">
+          <option>Matutino</option><option>Vespertino</option><option>Nocturno</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Fecha</label><input type="date" id="st-date"></div>
+    </div>
+    <div class="form-group" style="margin-top:12px;"><label>Descripción de la tarea</label>
+      <textarea id="st-desc" placeholder="Describe brevemente la actividad: movimientos, herramientas, frecuencia, duración..."></textarea>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Instrucciones de Uso</div>
+    <div style="font-size:13px;color:var(--text2);line-height:1.8;">
+      <b style="color:var(--tf-blue);">1.</b> Completa los datos de la estación arriba.<br>
+      <b style="color:var(--tf-blue);">2.</b> Ve a <b>Video / Foto</b> para analizar posturas con anotación manual o auto-detección.<br>
+      <b style="color:var(--tf-blue);">3.</b> O usa <b>Evaluación Manual</b> para aplicar REBA, RULA, NIOSH, OCRA u OWAS con sliders guiados.<br>
+      <b style="color:var(--tf-blue);">4.</b> Guarda cada evaluación — aparecerá en el Historial y Dashboard.<br>
+      <b style="color:var(--tf-blue);">5.</b> Exporta a PDF o Excel cuando termines.
+    </div>
+  </div>
+</section>
+
+<!-- ════ PAGE 2: VIDEO / FOTO ════ -->
+<section id="page-video" class="page">
+  <div style="display:grid;grid-template-columns:1fr 310px;gap:18px;">
+    <div>
+      <div class="card">
+        <div class="card-title">Fuente de Análisis</div>
+        <div class="btn-row">
+          <button class="btn btn-outline" onclick="document.getElementById('fileIn').click()">📁 Cargar archivo</button>
+          <input type="file" id="fileIn" hidden accept="video/*,image/*" onchange="loadMedia(event)">
+          <button class="btn btn-outline" onclick="startCamera('environment')">📷 Cámara trasera</button>
+          <button class="btn btn-outline" onclick="startCamera('user')">🤳 Cámara frontal</button>
+          <button class="btn btn-danger btn-sm" onclick="clearMedia()">🗑 Limpiar</button>
+        </div>
+
+        <!-- WORKSPACE -->
+        <div class="workspace" id="workspace">
+          <div class="workspace-placeholder" id="ws-placeholder">
+            <div class="icon">🎥</div>
+            <p>Carga un video, foto o activa la cámara</p>
+          </div>
+          <video id="videoEl" playsinline muted loop></video>
+          <img id="imgEl" alt="">
+          <canvas id="poseCanvas"></canvas>
+        </div>
+
+        <!-- VIDEO CONTROLS -->
+        <div class="video-ctrl" id="video-ctrl" style="display:none;">
+          <button class="ctrl-btn" id="playBtn" onclick="togglePlay()">▶</button>
+          <div class="prog-bar" onclick="seekVideo(event)"><div class="prog-fill" id="progFill"></div></div>
+          <span style="font-family:var(--mono);font-size:10px;color:var(--text3);" id="timeDisp">0:00</span>
+          <button class="ctrl-btn" onclick="stepFrame(-1)" title="Frame anterior">◀◀</button>
+          <button class="ctrl-btn" onclick="stepFrame(1)" title="Siguiente frame">▶▶</button>
+          <button class="ctrl-btn" onclick="captureFrame()" title="Capturar PNG">📸</button>
+        </div>
+
+        <!-- CAMERA STATUS -->
+        <div class="cam-badge" id="cam-status" style="display:none;">
+          <div class="cam-dot" id="cam-dot"></div>
+          <span id="cam-txt">—</span>
+        </div>
+
+        <!-- ANNOTATION TOOLBAR -->
+        <div class="card" id="annot-toolbar" style="display:none;padding:14px;margin-top:10px;margin-bottom:0;">
+          <div class="card-title" style="margin-bottom:10px;">Anotación de Articulaciones</div>
+          <div class="joint-btns" id="joint-btns"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;flex-wrap:wrap;gap:6px;">
+            <span style="font-family:var(--mono);font-size:10px;color:var(--text3);" id="annot-progress">0/11 puntos</span>
+            <div style="display:flex;gap:6px;">
+              <button class="btn btn-outline btn-sm" onclick="undoPoint()">↩ Deshacer</button>
+              <button class="btn btn-outline btn-sm" onclick="clearPoints()">🗑 Limpiar</button>
+              <button class="btn btn-primary btn-sm" onclick="analyzeAnnotations()">✓ Analizar</button>
             </div>
-        </section>
-    </main>
+          </div>
+          <div style="font-size:11px;color:var(--text3);margin-top:6px;" id="annot-instr">
+            Selecciona una articulación y haz clic sobre ella en la imagen
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SIDEBAR RESULTADOS -->
+    <div>
+      <div class="card">
+        <div class="card-title">Método de detección</div>
+        <div class="btn-row" style="margin-bottom:0;">
+          <button class="btn btn-sm" id="btn-auto" onclick="setDetectMode('auto')"
+            style="background:var(--tf-blue);color:#fff;">🤖 Auto</button>
+          <button class="btn btn-outline btn-sm" id="btn-manual" onclick="setDetectMode('manual')">✏️ Manual</button>
+        </div>
+        <div id="auto-hint" style="font-size:11px;color:var(--text3);margin-top:6px;">
+          Auto-detección con MediaPipe Pose
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Resultado REBA</div>
+        <div class="result-hero result-bg-none" id="result-hero">
+          <div class="score" id="res-score" style="color:var(--text3);">—</div>
+          <div class="score-label" id="res-label">Sin análisis</div>
+          <div class="score-action" id="res-action">Carga un video o foto</div>
+        </div>
+
+        <div class="angle-grid">
+          <div class="angle-box"><div class="seg">Cuello</div><div class="val" id="ang-neck" style="color:var(--text3);">—</div></div>
+          <div class="angle-box"><div class="seg">Tronco</div><div class="val" id="ang-trunk" style="color:var(--text3);">—</div></div>
+          <div class="angle-box"><div class="seg">Hombro</div><div class="val" id="ang-shoulder" style="color:var(--text3);">—</div></div>
+          <div class="angle-box"><div class="seg">Codo</div><div class="val" id="ang-elbow" style="color:var(--text3);">—</div></div>
+          <div class="angle-box"><div class="seg">Muñeca</div><div class="val" id="ang-wrist" style="color:var(--text3);">—</div></div>
+          <div class="angle-box"><div class="seg">Cadera</div><div class="val" id="ang-hip" style="color:var(--text3);">—</div></div>
+        </div>
+
+        <div id="seg-list" style="margin-bottom:14px;"></div>
+
+        <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="saveCurrentEval()">💾 Guardar evaluación</button>
+        <button class="btn btn-outline" style="width:100%;justify-content:center;margin-top:8px;" onclick="generatePDF()">📄 Generar PDF</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════ PAGE 3: EVALUACIÓN MANUAL ════ -->
+<section id="page-manual" class="page">
+  <div class="card">
+    <div class="card-title">Selección de Herramienta</div>
+    <div class="form-grid" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;" id="tool-btns">
+      <button class="btn btn-outline" onclick="loadTool('REBA')">🦴 REBA</button>
+      <button class="btn btn-outline" onclick="loadTool('RULA')">💪 RULA</button>
+      <button class="btn btn-outline" onclick="loadTool('NIOSH')">📦 NIOSH</button>
+      <button class="btn btn-outline" onclick="loadTool('OCRA')">🔄 OCRA</button>
+      <button class="btn btn-outline" onclick="loadTool('OWAS')">🧍 OWAS</button>
+      <button class="btn btn-outline" onclick="loadTool('JSI')">✋ JSI</button>
+    </div>
+  </div>
+
+  <div id="tool-container" style="display:none;">
+    <div style="display:grid;grid-template-columns:1fr 300px;gap:18px;">
+      <div class="card" id="tool-form">
+        <div class="card-title" id="tool-title">—</div>
+        <div id="tool-fields"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Puntuación</div>
+        <div class="result-hero result-bg-none" id="tool-hero" style="margin-bottom:14px;">
+          <div class="score" id="tool-score" style="color:var(--text3);">—</div>
+          <div class="score-label" id="tool-label">Sin datos</div>
+          <div class="score-action" id="tool-action">Ajusta los parámetros</div>
+        </div>
+        <div id="tool-breakdown"></div>
+        <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:12px;" onclick="saveToolResult()">💾 Guardar</button>
+        <button class="btn btn-outline" style="width:100%;justify-content:center;margin-top:8px;" onclick="generateToolPDF()">📄 PDF</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════ PAGE 4: HISTORIAL ════ -->
+<section id="page-history" class="page">
+  <div class="card">
+    <div class="card-title">Historial de Evaluaciones</div>
+    <div class="btn-row">
+      <button class="btn btn-success btn-sm" onclick="exportToExcel()">📊 Exportar Excel</button>
+      <button class="btn btn-outline btn-sm" onclick="clearHistory()">🗑 Limpiar historial</button>
+    </div>
+    <div id="hist-wrap">
+      <div style="text-align:center;padding:40px;color:var(--text3);">
+        <div style="font-size:36px;margin-bottom:10px;">📂</div>
+        <div>Sin evaluaciones guardadas</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════ PAGE 5: DASHBOARD ════ -->
+<section id="page-dashboard" class="page">
+  <div class="stats-row" id="dash-stats">
+    <div class="stat-card"><div class="val" id="d-total">0</div><div class="lbl">Total evaluaciones</div></div>
+    <div class="stat-card"><div class="val" style="color:var(--risk-low)" id="d-low">0</div><div class="lbl">Riesgo bajo</div></div>
+    <div class="stat-card"><div class="val" style="color:var(--risk-med)" id="d-med">0</div><div class="lbl">Riesgo moderado</div></div>
+    <div class="stat-card"><div class="val" style="color:var(--risk-high)" id="d-high">0</div><div class="lbl">Riesgo alto</div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;">
+    <div class="card"><div class="card-title">Puntuaciones por evaluación</div><div class="chart-wrap"><canvas id="chartScores"></canvas></div></div>
+    <div class="card"><div class="card-title">Distribución de riesgo</div><div class="chart-wrap"><canvas id="chartDist"></canvas></div></div>
+  </div>
+</section>
+```
+
+  </main>
 </div>
 
+<!-- ═══════════════════════════════════════════
+  JAVASCRIPT COMPLETO — TODOS LOS BUGS CORREGIDOS
+═══════════════════════════════════════════ -->
+
 <script>
-    // Configuración Inicial
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    const video = document.getElementById('videoSource');
-    const img = document.getElementById('imageSource');
-    let pose;
-    let points = [];
-    let currentAngles = { tronco: 0, brazo: 0, nivel: 'N/A' };
-    let history = [];
+'use strict';
 
-    // --- MOTOR DE VISIÓN ---
-    async function init() {
-        pose = new Pose({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}` });
-        pose.setOptions({ modelComplexity: 1, smoothLandmarks: true });
-        pose.onResults(onPoseResults);
+// ══════════════════════════════════
+//  ESTADO GLOBAL
+// ══════════════════════════════════
+const APP = {
+  history: JSON.parse(localStorage.getItem('ergonom_v6_hist') || '[]'),
+  currentAngles: {},
+  currentRisk: 'none',
+  currentScore: null,
+  currentTool: null,
+  detectMode: 'auto',
+  cameraStream: null,
+  renderLoop: null,
+  charts: {},
+};
+
+// Articulaciones para anotación manual
+const JOINTS = [
+  { id:'head',       label:'Cabeza',      color:'#e879f9', seg:'neck'     },
+  { id:'neck',       label:'Cuello',      color:'#a78bfa', seg:'neck'     },
+  { id:'l_shoulder', label:'Hombro Izq',  color:'#38bdf8', seg:'shoulder' },
+  { id:'r_shoulder', label:'Hombro Der',  color:'#38bdf8', seg:'shoulder' },
+  { id:'l_elbow',    label:'Codo Izq',    color:'#34d399', seg:'elbow'    },
+  { id:'r_elbow',    label:'Codo Der',    color:'#34d399', seg:'elbow'    },
+  { id:'l_wrist',    label:'Muñeca Izq',  color:'#fbbf24', seg:'wrist'    },
+  { id:'r_wrist',    label:'Muñeca Der',  color:'#fbbf24', seg:'wrist'    },
+  { id:'mid_hip',    label:'Cadera',      color:'#fb923c', seg:'hip'      },
+  { id:'l_knee',     label:'Rodilla Izq', color:'#f87171', seg:'knee'     },
+  { id:'r_knee',     label:'Rodilla Der', color:'#f87171', seg:'knee'     },
+];
+
+const RISK_COLORS = { low:'#16A34A', med:'#D97706', high:'#DC2626', none:'#8896A7' };
+
+let annotPoints = {};
+let activeJoint = null;
+let showOverlay  = true;
+let videoEl, imgEl, canvas, ctx;
+let poseDetector = null;
+
+// ══════════════════════════════════
+//  NAVEGACIÓN — BUG #2 CORREGIDO
+// ══════════════════════════════════
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const pg = document.getElementById(id);
+  if (pg) pg.classList.add('active');
+  const navId = 'nav-' + id.replace('page-', '');
+  const nav = document.getElementById(navId);
+  if (nav) nav.classList.add('active');
+  if (id === 'page-dashboard') refreshDashboard();
+  if (id === 'page-history')   refreshHistory();
+}
+
+// ══════════════════════════════════
+//  VIDEO / MEDIA
+// ══════════════════════════════════
+function initElements() {
+  videoEl = document.getElementById('videoEl');
+  imgEl   = document.getElementById('imgEl');
+  canvas  = document.getElementById('poseCanvas');
+  ctx     = canvas.getContext('2d');
+  canvas.addEventListener('click', handleCanvasClick);
+  initJointButtons();
+}
+
+function loadMedia(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  clearMedia(false);
+  const url = URL.createObjectURL(file);
+
+  if (file.type.startsWith('video/')) {
+    videoEl.src = url;
+    videoEl.style.display = 'block';
+    videoEl.play();
+    document.getElementById('video-ctrl').style.display = 'flex';
+    videoEl.onloadedmetadata = () => resizeCanvas();
+    videoEl.ontimeupdate = syncProgress;
+  } else {
+    imgEl.src = url;
+    imgEl.style.display = 'block';
+    imgEl.onload = () => resizeCanvas();
+  }
+
+  document.getElementById('ws-placeholder').style.display = 'none';
+  document.getElementById('annot-toolbar').style.display = 'block';
+  document.getElementById('cam-status').style.display = 'flex';
+  document.getElementById('cam-dot').className = 'cam-dot';
+  document.getElementById('cam-txt').textContent = 'Archivo cargado — listo para anotar';
+}
+
+async function startCamera(facing) {
+  clearMedia(false);
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: facing }, width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false,
+    });
+    APP.cameraStream = stream;
+    videoEl.srcObject = stream;
+    videoEl.style.display = 'block';
+    videoEl.play();
+    videoEl.onloadedmetadata = () => resizeCanvas();
+    document.getElementById('ws-placeholder').style.display = 'none';
+    document.getElementById('annot-toolbar').style.display = 'block';
+    document.getElementById('cam-status').style.display = 'flex';
+    document.getElementById('cam-dot').className = 'cam-dot live';
+    document.getElementById('cam-txt').textContent = facing === 'environment' ? '📸 Cámara trasera activa' : '🤳 Cámara frontal activa';
+    startRenderLoop();
+  } catch (err) {
+    alert('No se pudo acceder a la cámara: ' + err.message + '\n(Requiere HTTPS)');
+  }
+}
+
+function clearMedia(resetAll = true) {
+  if (APP.cameraStream) {
+    APP.cameraStream.getTracks().forEach(t => t.stop());
+    APP.cameraStream = null;
+  }
+  if (APP.renderLoop) { cancelAnimationFrame(APP.renderLoop); APP.renderLoop = null; }
+  if (videoEl) { videoEl.pause(); videoEl.srcObject = null; videoEl.src = ''; videoEl.style.display = 'none'; }
+  if (imgEl)   { imgEl.src = ''; imgEl.style.display = 'none'; }
+  if (ctx && canvas) ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (resetAll) {
+    annotPoints = {}; activeJoint = null;
+    document.getElementById('ws-placeholder').style.display = 'flex';
+    document.getElementById('annot-toolbar').style.display = 'none';
+    document.getElementById('video-ctrl').style.display = 'none';
+    document.getElementById('cam-status').style.display = 'none';
+    resetResults();
+    initJointButtons();
+  }
+}
+
+// BUG #4 CORREGIDO — resizeCanvas usa dimensiones reales del video/imagen
+function resizeCanvas() {
+  const ws = document.getElementById('workspace');
+  const w  = videoEl.style.display !== 'none'
+    ? (videoEl.videoWidth  || videoEl.offsetWidth)
+    : (imgEl.naturalWidth  || imgEl.offsetWidth);
+  const h  = videoEl.style.display !== 'none'
+    ? (videoEl.videoHeight || videoEl.offsetHeight)
+    : (imgEl.naturalHeight || imgEl.offsetHeight);
+  canvas.width  = ws.clientWidth;
+  canvas.height = h > 0 ? ws.clientWidth * (h / w) : ws.clientHeight;
+  // Ajusta la altura mínima del workspace
+  ws.style.minHeight = canvas.height + 'px';
+}
+
+function togglePlay() {
+  if (!videoEl) return;
+  const btn = document.getElementById('playBtn');
+  if (videoEl.paused) { videoEl.play(); btn.textContent = '⏸'; }
+  else                { videoEl.pause(); btn.textContent = '▶'; }
+}
+
+function seekVideo(e) {
+  if (!videoEl || !videoEl.duration) return;
+  const pct = e.offsetX / e.currentTarget.offsetWidth;
+  videoEl.currentTime = pct * videoEl.duration;
+}
+
+function stepFrame(dir) {
+  if (!videoEl) return;
+  videoEl.pause();
+  document.getElementById('playBtn').textContent = '▶';
+  videoEl.currentTime = Math.max(0, Math.min(videoEl.duration || 0, videoEl.currentTime + dir / 30));
+}
+
+function syncProgress() {
+  if (!videoEl || !videoEl.duration) return;
+  document.getElementById('progFill').style.width = (videoEl.currentTime / videoEl.duration * 100) + '%';
+  const m = Math.floor(videoEl.currentTime / 60);
+  const s = Math.floor(videoEl.currentTime % 60).toString().padStart(2, '0');
+  document.getElementById('timeDisp').textContent = `${m}:${s}`;
+}
+
+function captureFrame() {
+  if (!canvas) return;
+  const a = document.createElement('a');
+  a.href = canvas.toDataURL('image/png');
+  a.download = `ergonom-frame-${Date.now()}.png`;
+  a.click();
+}
+
+// ══════════════════════════════════
+//  MODO DETECCIÓN
+// ══════════════════════════════════
+function setDetectMode(mode) {
+  APP.detectMode = mode;
+  document.getElementById('btn-auto').className   = mode === 'auto'   ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-outline';
+  document.getElementById('btn-manual').className = mode === 'manual' ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-outline';
+  document.getElementById('auto-hint').textContent = mode === 'auto'
+    ? 'Auto-detección con MediaPipe — haz clic en "✓ Analizar"'
+    : 'Anotación manual — selecciona articulación y haz clic en la imagen';
+}
+
+// ══════════════════════════════════
+//  ANOTACIÓN MANUAL
+// ══════════════════════════════════
+function initJointButtons() {
+  const wrap = document.getElementById('joint-btns');
+  if (!wrap) return;
+  wrap.innerHTML = JOINTS.map(j => `
+    <button class="joint-btn" id="jb-${j.id}"
+      style="background:${j.color}22;color:${j.color};border-color:${j.color}44;"
+      onclick="selectJoint('${j.id}')">
+      ${annotPoints[j.id] ? '✓ ' : ''}${j.label}
+    </button>`).join('');
+  const placed = Object.keys(annotPoints).length;
+  document.getElementById('annot-progress').textContent = `${placed}/${JOINTS.length} puntos`;
+}
+
+function selectJoint(id) {
+  activeJoint = id;
+  document.querySelectorAll('.joint-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('jb-' + id);
+  if (btn) btn.classList.add('active');
+  const j = JOINTS.find(x => x.id === id);
+  document.getElementById('annot-instr').textContent = `→ Haz clic sobre: ${j?.label}`;
+}
+
+function handleCanvasClick(e) {
+  if (APP.detectMode !== 'manual') return;
+  if (!activeJoint) {
+    const first = JOINTS.find(j => !annotPoints[j.id]);
+    if (first) selectJoint(first.id);
+    else return;
+  }
+  const rect   = canvas.getBoundingClientRect();
+  const scaleX = canvas.width  / rect.width;
+  const scaleY = canvas.height / rect.height;
+  annotPoints[activeJoint] = { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
+
+  const idx  = JOINTS.findIndex(j => j.id === activeJoint);
+  const next = JOINTS.slice(idx + 1).find(j => !annotPoints[j.id]);
+  if (next) selectJoint(next.id);
+  else { activeJoint = null; document.getElementById('annot-instr').textContent = '✅ Todos los puntos colocados — presiona Analizar'; }
+
+  initJointButtons();
+  drawAnnotations();
+}
+
+function undoPoint() {
+  const keys = Object.keys(annotPoints);
+  if (!keys.length) return;
+  delete annotPoints[keys[keys.length - 1]];
+  initJointButtons();
+  drawAnnotations();
+}
+
+function clearPoints() {
+  annotPoints = {}; activeJoint = null;
+  initJointButtons();
+  if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+  document.getElementById('annot-instr').textContent = 'Selecciona una articulación y haz clic sobre ella';
+}
+
+// ══════════════════════════════════
+//  RENDER LOOP (cámara en vivo)
+// ══════════════════════════════════
+function startRenderLoop() {
+  if (APP.renderLoop) cancelAnimationFrame(APP.renderLoop);
+  const loop = () => {
+    APP.renderLoop = requestAnimationFrame(loop);
+    if (showOverlay) drawAnnotations();
+  };
+  loop();
+}
+
+// ══════════════════════════════════
+//  DIBUJAR ESQUELETO
+// ══════════════════════════════════
+const SKEL = [
+  ['head','neck'],['neck','l_shoulder'],['neck','r_shoulder'],
+  ['l_shoulder','r_shoulder'],
+  ['l_shoulder','l_elbow'],['l_elbow','l_wrist'],
+  ['r_shoulder','r_elbow'],['r_elbow','r_wrist'],
+  ['l_shoulder','mid_hip'],['r_shoulder','mid_hip'],
+  ['mid_hip','l_knee'],['mid_hip','r_knee'],
+];
+
+function drawAnnotations() {
+  if (!ctx || !canvas) return;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Conexiones
+  SKEL.forEach(([a, b]) => {
+    if (!annotPoints[a] || !annotPoints[b]) return;
+    const jA  = JOINTS.find(j => j.id === a);
+    const risk = getSegmentRisk(a);
+    const col  = RISK_COLORS[risk] || '#4ade80';
+    ctx.beginPath();
+    ctx.moveTo(annotPoints[a].x, annotPoints[a].y);
+    ctx.lineTo(annotPoints[b].x, annotPoints[b].y);
+    ctx.strokeStyle = col + 'cc';
+    ctx.lineWidth   = 3;
+    ctx.globalAlpha = 0.85;
+    ctx.stroke();
+    drawArrow(annotPoints[a], annotPoints[b], col);
+  });
+
+  // Joints
+  JOINTS.forEach(j => {
+    if (!annotPoints[j.id]) return;
+    const { x, y } = annotPoints[j.id];
+    const isActive  = activeJoint === j.id;
+    ctx.beginPath(); ctx.arc(x, y, isActive ? 14 : 10, 0, Math.PI * 2);
+    ctx.fillStyle = j.color + '28'; ctx.globalAlpha = 1; ctx.fill();
+    ctx.beginPath(); ctx.arc(x, y, isActive ? 7 : 6, 0, Math.PI * 2);
+    ctx.fillStyle = j.color; ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,.4)'; ctx.lineWidth = 1.5; ctx.stroke();
+
+    ctx.font = `bold 10px "Space Mono",monospace`;
+    ctx.fillStyle = '#fff'; ctx.shadowColor = 'rgba(0,0,0,.8)'; ctx.shadowBlur = 3;
+    ctx.fillText(j.label, x + 10, y - 4);
+
+    const ang = getJointAngle(j.id);
+    if (ang !== null) {
+      const risk = jointRisk(ang, j.seg);
+      ctx.fillStyle = RISK_COLORS[risk];
+      ctx.shadowColor = 'rgba(0,0,0,.9)'; ctx.shadowBlur = 4;
+      ctx.fillText(`${ang}°`, x + 10, y + 10);
     }
+    ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+  });
+}
 
-    function loadMedia(e) {
-        const file = e.target.files[0];
-        if(!file) return;
-        const url = URL.createObjectURL(file);
-        clearVideo();
-        if(file.type.startsWith('video')) {
-            video.src = url; video.style.display = 'block'; video.play();
-            video.onloadedmetadata = () => resizeCanvas(video.videoWidth, video.videoHeight);
-        } else {
-            img.src = url; img.style.display = 'block';
-            img.onload = () => resizeCanvas(img.naturalWidth, img.naturalHeight);
-        }
+function drawArrow(A, B, color) {
+  const angle = Math.atan2(B.y - A.y, B.x - A.x);
+  const mx = (A.x + B.x) / 2, my = (A.y + B.y) / 2;
+  const size = 7;
+  ctx.beginPath();
+  ctx.moveTo(mx, my);
+  ctx.lineTo(mx - size * Math.cos(angle - 0.4), my - size * Math.sin(angle - 0.4));
+  ctx.lineTo(mx - size * Math.cos(angle + 0.4), my - size * Math.sin(angle + 0.4));
+  ctx.closePath();
+  ctx.fillStyle = color + 'cc'; ctx.globalAlpha = 0.8; ctx.fill();
+}
+
+// ══════════════════════════════════
+//  CÁLCULO DE ÁNGULOS
+//  BUG #5 CORREGIDO — vertical real
+// ══════════════════════════════════
+function angleBetween(A, B, C) {
+  if (!A || !B || !C) return null;
+  const vBA = { x: A.x - B.x, y: A.y - B.y };
+  const vBC = { x: C.x - B.x, y: C.y - B.y };
+  const dot  = vBA.x * vBC.x + vBA.y * vBC.y;
+  const mag  = Math.hypot(vBA.x, vBA.y) * Math.hypot(vBC.x, vBC.y);
+  if (mag === 0) return null;
+  return Math.round(Math.acos(Math.max(-1, Math.min(1, dot / mag))) * 180 / Math.PI);
+}
+
+function getJointAngle(jid) {
+  const P = annotPoints;
+  // Referencia vertical = punto directamente arriba del vértice (corrige bug #5)
+  const above = (p) => p ? { x: p.x, y: p.y - 100 } : null;
+  switch (jid) {
+    case 'neck': {
+      const sh = midpoint(P.l_shoulder, P.r_shoulder) || P.l_shoulder || P.r_shoulder;
+      return angleBetween(P.head, P.neck, sh);
     }
-
-    function toggleVideo() { video.paused ? video.play() : video.pause(); }
-
-    function clearVideo() {
-        video.pause(); video.src = ""; video.style.display = 'none';
-        img.src = ""; img.style.display = 'none';
-        points = []; ctx.clearRect(0,0,canvas.width,canvas.height);
-        document.getElementById('risk-label').innerText = "---";
-        document.getElementById('risk-label').style.background = "transparent";
+    case 'l_shoulder': return angleBetween(P.neck, P.l_shoulder, P.l_elbow);
+    case 'r_shoulder': return angleBetween(P.neck, P.r_shoulder, P.r_elbow);
+    case 'l_elbow':    return angleBetween(P.l_shoulder, P.l_elbow, P.l_wrist);
+    case 'r_elbow':    return angleBetween(P.r_shoulder, P.r_elbow, P.r_wrist);
+    case 'l_wrist':    return P.l_wrist ? angleBetween(P.l_elbow, P.l_wrist, above(P.l_wrist)) : null;
+    case 'r_wrist':    return P.r_wrist ? angleBetween(P.r_elbow, P.r_wrist, above(P.r_wrist)) : null;
+    case 'mid_hip': {
+      const sh = midpoint(P.l_shoulder, P.r_shoulder) || P.l_shoulder || P.r_shoulder;
+      const kn = midpoint(P.l_knee, P.r_knee) || P.l_knee || P.r_knee;
+      return angleBetween(sh, P.mid_hip, kn);
     }
+    case 'l_knee': return angleBetween(P.mid_hip, P.l_knee, above(P.l_knee));
+    case 'r_knee': return angleBetween(P.mid_hip, P.r_knee, above(P.r_knee));
+    default: return null;
+  }
+}
 
-    function resizeCanvas(w, h) {
-        const container = document.getElementById('workspace');
-        canvas.width = container.clientWidth;
-        canvas.height = container.clientWidth * (h/w);
-        drawScene();
+function midpoint(A, B) {
+  if (!A || !B) return null;
+  return { x: (A.x + B.x) / 2, y: (A.y + B.y) / 2 };
+}
+
+function getSegmentRisk(jid) {
+  const j   = JOINTS.find(x => x.id === jid);
+  const ang = getJointAngle(jid);
+  if (ang === null) return 'low';
+  return jointRisk(ang, j?.seg || 'elbow');
+}
+
+const RISK_THRESH = {
+  neck:     [{max:20,r:'low'},{max:35,r:'med'},{max:999,r:'high'}],
+  trunk:    [{max:20,r:'low'},{max:45,r:'med'},{max:999,r:'high'}],
+  shoulder: [{max:45,r:'low'},{max:90,r:'med'},{max:999,r:'high'}],
+  elbow:    [{max:90,r:'low'},{max:120,r:'med'},{max:999,r:'high'}],
+  wrist:    [{max:15,r:'low'},{max:30,r:'med'},{max:999,r:'high'}],
+  hip:      [{max:20,r:'low'},{max:45,r:'med'},{max:999,r:'high'}],
+  knee:     [{max:30,r:'low'},{max:60,r:'med'},{max:999,r:'high'}],
+};
+
+function jointRisk(angle, seg) {
+  const t = RISK_THRESH[seg] || RISK_THRESH.elbow;
+  return t.find(x => angle <= x.max)?.r || 'high';
+}
+
+// ══════════════════════════════════
+//  AUTO DETECCIÓN — MediaPipe
+//  BUG #6 CORREGIDO — loop real
+// ══════════════════════════════════
+async function initMediaPipe() {
+  try {
+    poseDetector = new Pose({
+      locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${f}`,
+    });
+    poseDetector.setOptions({ modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+    poseDetector.onResults(onPoseResults);
+  } catch (e) { console.warn('MediaPipe no disponible:', e); }
+}
+
+// BUG #6: Ahora analiza el frame actual correctamente
+async function analyzeAnnotations() {
+  if (APP.detectMode === 'auto') {
+    // Auto — MediaPipe analiza el frame actual
+    if (!poseDetector) { alert('MediaPipe no disponible. Usa modo Manual.'); return; }
+    const src = videoEl.style.display !== 'none' ? videoEl : imgEl;
+    try {
+      await poseDetector.send({ image: src });
+    } catch (e) { alert('Error al procesar imagen: ' + e.message); }
+  } else {
+    // Manual — usa los puntos anotados
+    if (Object.keys(annotPoints).length < 3) {
+      alert('Coloca al menos 3 puntos articulares para calcular ángulos.'); return;
     }
+    computeAndShowResults();
+  }
+}
 
-    // --- LÓGICA BIOMECÁNICA ---
-    async function runAutoDetection() { await pose.send({ image: video.style.display === 'block' ? video : img }); }
+function onPoseResults(results) {
+  if (!results.poseLandmarks) { alert('No se detectó ninguna persona. Intenta con modo manual.'); return; }
+  const lm = results.poseLandmarks;
+  const w  = canvas.width, h = canvas.height;
+  // Mapear landmarks de MediaPipe a nuestros joints
+  annotPoints = {
+    head:       { x: lm[0].x * w,  y: lm[0].y * h },
+    neck:       { x: (lm[11].x + lm[12].x) / 2 * w, y: (lm[11].y + lm[12].y) / 2 * h },
+    l_shoulder: { x: lm[11].x * w, y: lm[11].y * h },
+    r_shoulder: { x: lm[12].x * w, y: lm[12].y * h },
+    l_elbow:    { x: lm[13].x * w, y: lm[13].y * h },
+    r_elbow:    { x: lm[14].x * w, y: lm[14].y * h },
+    l_wrist:    { x: lm[15].x * w, y: lm[15].y * h },
+    r_wrist:    { x: lm[16].x * w, y: lm[16].y * h },
+    mid_hip:    { x: (lm[23].x + lm[24].x) / 2 * w, y: (lm[23].y + lm[24].y) / 2 * h },
+    l_knee:     { x: lm[25].x * w, y: lm[25].y * h },
+    r_knee:     { x: lm[26].x * w, y: lm[26].y * h },
+  };
+  initJointButtons();
+  drawAnnotations();
+  computeAndShowResults();
+}
 
-    function onPoseResults(results) {
-        if (!results.poseLandmarks) return;
-        const lm = results.poseLandmarks;
-        const w = canvas.width, h = canvas.height;
-        points = [
-            { id: 'C', label: 'Cabeza', x: lm[0].x * w, y: lm[0].y * h },
-            { id: 'CU', label: 'Cuello', x: (lm[11].x + lm[12].x)/2 * w, y: (lm[11].y + lm[12].y)/2 * h },
-            { id: 'H', label: 'Hombro', x: lm[12].x * w, y: lm[12].y * h },
-            { id: 'Co', label: 'Codo', x: lm[14].x * w, y: lm[14].y * h },
-            { id: 'M', label: 'Muñeca', x: lm[16].x * w, y: lm[16].y * h },
-            { id: 'Ca', label: 'Cadera', x: lm[24].x * w, y: lm[24].y * h }
-        ];
-        drawScene();
+function computeAndShowResults() {
+  const angles = {};
+  JOINTS.forEach(j => { angles[j.id] = getJointAngle(j.id); });
+
+  APP.currentAngles = {
+    neck:     angles.neck,
+    trunk:    angles.mid_hip,
+    shoulder: angles.l_shoulder ?? angles.r_shoulder,
+    elbow:    angles.l_elbow    ?? angles.r_elbow,
+    wrist:    angles.l_wrist    ?? angles.r_wrist,
+    hip:      angles.mid_hip,
+    knee:     angles.l_knee     ?? angles.r_knee,
+  };
+
+  // Alimentar REBA con ángulos reales
+  const nk = angles.neck      || 0;
+  const tr = angles.mid_hip   || 0;
+  const sh = angles.l_shoulder|| 0;
+  const el = angles.l_elbow   || 90;
+  const wr = angles.l_wrist   || 0;
+
+  // Calcular REBA simplificado
+  const rebaScore = calcREBASimple(nk, tr, sh, el, wr);
+  APP.currentScore = rebaScore;
+
+  const risk = rebaScore <= 3 ? 'low' : rebaScore <= 7 ? 'med' : 'high';
+  APP.currentRisk = risk;
+
+  const labels = { low:'RIESGO BAJO', med:'RIESGO MEDIO', high:'RIESGO ALTO' };
+  const actions = { low:'Puede requerir cambios', med:'Investigar y cambiar pronto', high:'Cambio inmediato' };
+
+  // Actualizar UI
+  const hero = document.getElementById('result-hero');
+  hero.className = `result-hero result-bg-${risk}`;
+  document.getElementById('res-score').textContent = rebaScore;
+  document.getElementById('res-score').style.color = RISK_COLORS[risk];
+  document.getElementById('res-label').textContent  = labels[risk];
+  document.getElementById('res-action').textContent = actions[risk];
+
+  const angMap = { neck:'ang-neck', trunk:'ang-trunk', shoulder:'ang-shoulder', elbow:'ang-elbow', wrist:'ang-wrist', hip:'ang-hip' };
+  const segRisk = { neck:nk, trunk:tr, shoulder:sh, elbow:el, wrist:wr, hip:tr };
+  Object.entries(angMap).forEach(([seg, elId]) => {
+    const val  = APP.currentAngles[seg];
+    const r    = val != null ? jointRisk(val, seg) : 'none';
+    const el2  = document.getElementById(elId);
+    if (el2) { el2.textContent = val != null ? `${val}°` : '—'; el2.style.color = RISK_COLORS[r] || RISK_COLORS.none; }
+  });
+
+  // Lista de segmentos
+  const segs = [
+    {n:'Cuello',a:angles.neck,       seg:'neck'    },
+    {n:'Tronco',a:angles.mid_hip,    seg:'hip'     },
+    {n:'Hombro Izq',a:angles.l_shoulder,seg:'shoulder'},
+    {n:'Codo Izq',  a:angles.l_elbow,   seg:'elbow'  },
+    {n:'Muñeca Izq',a:angles.l_wrist,   seg:'wrist'  },
+    {n:'Rodilla Izq',a:angles.l_knee,   seg:'knee'   },
+  ];
+  document.getElementById('seg-list').innerHTML = segs.filter(s=>s.a!=null).map(s=>{
+    const r   = jointRisk(s.a, s.seg);
+    const pct = Math.min(s.a,120)/120*100;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px;">
+      <span style="min-width:80px;color:var(--text2);">${s.n}</span>
+      <div style="flex:1;height:3px;background:var(--border);border-radius:2px;overflow:hidden;">
+        <div style="height:100%;width:${pct}%;background:${RISK_COLORS[r]};border-radius:2px;"></div>
+      </div>
+      <span style="font-family:var(--mono);font-size:11px;color:${RISK_COLORS[r]};">${s.a}°</span>
+    </div>`;
+  }).join('');
+}
+
+// REBA simplificado — puntuaciones de tabla A+B+C
+const TABLE_A = [[1,2,3,4],[2,3,4,5],[3,4,5,6],[4,5,6,7],[5,6,7,8]];
+const TABLE_B = [[1,2,3],[2,3,4],[3,4,5],[4,5,6],[5,6,7]];
+const TABLE_C = [[1,1,2,3,4,6,7],[1,2,3,4,5,6,7],[2,3,4,5,6,7,8],[3,4,5,6,7,8,9],[4,5,6,7,8,9,9]];
+
+function calcREBASimple(neck, trunk, arm, forearm, wrist) {
+  const sN  = neck   <= 20 ? 0 : 1;
+  const sT  = trunk  <= 5  ? 0 : trunk <= 20 ? 1 : trunk <= 60 ? 2 : 3;
+  const sA  = arm    <= 20 ? 0 : arm   <= 45 ? 1 : arm   <= 90 ? 2 : 3;
+  const sF  = forearm>= 60 && forearm <= 100 ? 0 : 1;
+  const sW  = wrist  <= 15 ? 0 : 1;
+  const sA2 = Math.min(sA + sF, 4);
+  const scoreA = (TABLE_A[Math.min(sN,4)]?.[Math.min(sT,3)] || 1);
+  const scoreB = (TABLE_B[Math.min(sA2,4)]?.[Math.min(sW,2)] || 1);
+  return Math.min((TABLE_C[Math.min(scoreA-1,4)]?.[Math.min(scoreB-1,6)] || 1) + 0, 15);
+}
+
+function resetResults() {
+  APP.currentAngles = {}; APP.currentScore = null; APP.currentRisk = 'none';
+  document.getElementById('result-hero').className = 'result-hero result-bg-none';
+  document.getElementById('res-score').textContent  = '—';
+  document.getElementById('res-score').style.color  = 'var(--text3)';
+  document.getElementById('res-label').textContent  = 'Sin análisis';
+  document.getElementById('res-action').textContent = 'Carga un video o foto';
+  document.getElementById('seg-list').innerHTML = '';
+  ['ang-neck','ang-trunk','ang-shoulder','ang-elbow','ang-wrist','ang-hip'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.textContent = '—'; el.style.color = 'var(--text3)'; }
+  });
+}
+
+// ══════════════════════════════════
+//  HERRAMIENTAS MANUALES
+//  BUG #7 CORREGIDO — cálculo real
+// ══════════════════════════════════
+const TOOLS = {
+  REBA: {
+    name: 'REBA — Rapid Entire Body Assessment',
+    fields: [
+      { id:'neck',    label:'Flexión de cuello (°)', type:'range', min:0,  max:45,  val:10 },
+      { id:'trunk',   label:'Flexión de tronco (°)', type:'range', min:0,  max:60,  val:10 },
+      { id:'arm',     label:'Elevación de brazo (°)',type:'range', min:0,  max:120, val:30 },
+      { id:'forearm', label:'Flexión de antebrazo (°)',type:'range',min:0, max:145, val:90 },
+      { id:'wrist',   label:'Flexión de muñeca (°)',  type:'range',min:0,  max:45,  val:5  },
+      { id:'load',    label:'Carga (kg)',              type:'range',min:0,  max:20,  val:0  },
+    ],
+    calc: (v) => {
+      const score = calcREBASimple(v.neck, v.trunk, v.arm, v.forearm, v.wrist) + (v.load >= 10 ? 2 : v.load >= 5 ? 1 : 0);
+      const s = Math.min(score, 15);
+      const r = s <= 3 ? 'low' : s <= 7 ? 'med' : 'high';
+      return { score: s, risk: r, label: r === 'low' ? 'Riesgo bajo' : r === 'med' ? 'Riesgo medio' : 'Riesgo alto', action: r === 'low' ? 'Sin cambios inmediatos' : r === 'med' ? 'Investigar y cambiar' : 'Cambio inmediato' };
+    },
+  },
+  RULA: {
+    name: 'RULA — Rapid Upper Limb Assessment',
+    fields: [
+      { id:'arm',     label:'Elevación de brazo (°)',  type:'range',min:0,  max:90, val:20 },
+      { id:'forearm', label:'Flexión de antebrazo (°)',type:'range',min:0,  max:145,val:80 },
+      { id:'wrist',   label:'Flexión de muñeca (°)',   type:'range',min:0,  max:45, val:0  },
+      { id:'neck',    label:'Flexión de cuello (°)',   type:'range',min:0,  max:45, val:10 },
+      { id:'trunk',   label:'Flexión de tronco (°)',   type:'range',min:0,  max:60, val:0  },
+      { id:'force',   label:'Fuerza aplicada (0-3)',   type:'range',min:0,  max:3,  val:0  },
+    ],
+    calc: (v) => {
+      const sA = v.arm<=20?1:v.arm<=45?2:v.arm<=90?3:4;
+      const sF = v.forearm>=60&&v.forearm<=100?1:2;
+      const sW = v.wrist<=15?1:2;
+      const sN = v.neck<=10?1:v.neck<=20?2:3;
+      const sT = v.trunk<=10?1:v.trunk<=20?2:v.trunk<=60?3:4;
+      const tA = [[1,2,2,2,3,3],[2,2,2,2,3,3],[2,3,3,3,3,4],[2,3,3,3,4,4]];
+      const tB = [[1,3],[2,3],[3,4],[5,5],[6,6],[7,7]];
+      const tC = [[1,2,3,3,4,5,5],[2,2,3,4,4,5,5],[3,3,3,4,4,5,6],[3,3,3,4,5,6,6],[4,4,4,5,6,7,7],[4,4,5,6,6,7,7],[5,5,6,6,7,7,7]];
+      const sC = Math.min((tA[Math.min(sA-1,3)]?.[Math.min(sF-1,5)] || 1) + v.force, 8);
+      const sD = Math.min((tB[Math.min(sN-1,5)]?.[Math.min(sT-1,1)] || 1) + v.force, 7);
+      const s  = tC[Math.min(sC-1,6)]?.[Math.min(sD-1,6)] || 1;
+      const r  = s<=2?'low':s<=5?'med':'high';
+      return { score: s, risk: r, label: r==='low'?'Aceptable':r==='med'?'Investigar':'Cambio inmediato', action: r==='low'?'Sin acción':r==='med'?'Cambios próximos':'Cambio inmediato' };
+    },
+  },
+  NIOSH: {
+    name: 'NIOSH — Ecuación Revisada de Levantamiento',
+    fields: [
+      { id:'weight', label:'Peso levantado (kg)',      type:'number', min:0, max:200, val:15  },
+      { id:'H',      label:'Distancia horizontal (cm)',type:'number', min:0, max:63,  val:30  },
+      { id:'V',      label:'Altura vertical (cm)',     type:'number', min:0, max:175, val:75  },
+      { id:'D',      label:'Distancia recorrida (cm)', type:'number', min:0, max:175, val:25  },
+      { id:'A',      label:'Ángulo de asimetría (°)',  type:'number', min:0, max:135, val:0   },
+      { id:'F',      label:'Frecuencia (lev/min)',     type:'number', min:0, max:15,  val:1, step:0.5 },
+    ],
+    calc: (v) => {
+      const HM = v.H <= 25 ? 1 : v.H > 63 ? 0 : +(25/v.H).toFixed(3);
+      const VM = +(1 - 0.003 * Math.abs(v.V - 75)).toFixed(3);
+      const DM = v.D < 25 ? 0.87 : v.D > 175 ? 0 : +(0.82 + 4.5/v.D).toFixed(3);
+      const AM = v.A === 0 ? 1 : +(1 - 0.0032 * v.A).toFixed(3);
+      const FM = v.F <= 0.2 ? 1 : v.F <= 1 ? 0.94 : v.F <= 2 ? 0.91 : v.F <= 3 ? 0.88 : v.F <= 4 ? 0.84 : 0.75;
+      const LPR = +(23 * HM * VM * DM * AM * FM).toFixed(2);
+      const IL  = LPR > 0 ? +(v.weight / LPR).toFixed(2) : 99;
+      const r   = IL <= 1 ? 'low' : IL <= 2 ? 'med' : 'high';
+      return { score: IL, risk: r, label: r==='low'?'Seguro':r==='med'?'Riesgo moderado':'Rediseño urgente', action: r==='low'?'Sin cambios':r==='med'?'Rediseño a mediano plazo':'Cambio inmediato', extra: { LPR, HM, VM, DM, AM, FM } };
+    },
+  },
+  OCRA: {
+    name: 'OCRA — Occupational Repetitive Actions',
+    fields: [
+      { id:'ata',  label:'Acciones técnicas/min observadas', type:'number', min:0, val:30  },
+      { id:'dur',  label:'Duración neta de tarea (min)',     type:'number', min:0, val:420 },
+      { id:'freq', label:'Factor frecuencia (0-10)',         type:'range',  min:0, max:10, val:2 },
+      { id:'force',label:'Factor fuerza (0-32)',             type:'range',  min:0, max:32, val:4 },
+      { id:'posture',label:'Factor postura (0-8)',           type:'range',  min:0, max:8,  val:2 },
+    ],
+    calc: (v) => {
+      const ref = Math.max(1, (30 - v.freq - v.force - v.posture) * (v.dur / 60) * 60 / Math.max(v.dur, 1));
+      const idx = +(v.ata / ref).toFixed(2);
+      const r   = idx <= 7.5 ? 'low' : idx <= 22.5 ? 'med' : 'high';
+      return { score: idx, risk: r, label: r==='low'?'Aceptable':r==='med'?'Riesgo medio':'Riesgo alto', action: r==='low'?'Sin acción':r==='med'?'Rediseño próximo':'Rediseño inmediato' };
+    },
+  },
+  OWAS: {
+    name: 'OWAS — Ovako Working Posture Analysis',
+    fields: [
+      { id:'back',  label:'Postura de espalda', type:'select', opts:['1 — Recta','2 — Doblada','3 — Girada','4 — Doblada+Girada'] },
+      { id:'arms',  label:'Postura de brazos',  type:'select', opts:['1 — Ambos bajo hombro','2 — Uno al nivel','3 — Ambos elevados'] },
+      { id:'legs',  label:'Postura de piernas', type:'select', opts:['1 — Sentado','2 — De pie','3 — Peso en una pierna','4 — Rodillas dobladas','5 — Arrodillado','6 — Caminando'] },
+      { id:'load',  label:'Carga',               type:'select', opts:['1 — Menos de 10 kg','2 — Entre 10 y 20 kg','3 — Más de 20 kg'] },
+    ],
+    calc: (v) => {
+      const owas = {
+        '1-1':{1:1,2:1,3:1,4:2,5:3,6:1},'1-2':{1:1,2:1,3:1,4:2,5:2,6:1},'1-3':{1:1,2:1,3:2,4:2,5:3,6:2},
+        '2-1':{1:2,2:2,3:2,4:3,5:3,6:2},'2-2':{1:2,2:2,3:2,4:3,5:4,6:3},'2-3':{1:2,2:2,3:3,4:3,5:4,6:3},
+        '3-1':{1:1,2:1,3:1,4:2,5:2,6:1},'3-2':{1:2,2:2,3:2,4:3,5:3,6:2},'3-3':{1:2,2:2,3:2,4:3,5:3,6:2},
+        '4-1':{1:2,2:3,3:3,4:3,5:4,6:2},'4-2':{1:3,2:3,3:3,4:4,5:4,6:3},'4-3':{1:3,2:3,3:3,4:4,5:4,6:3},
+      };
+      const back = parseInt(v.back) || 1;
+      const arms = parseInt(v.arms) || 1;
+      const legs = parseInt(v.legs) || 1;
+      const cat  = owas[`${back}-${arms}`]?.[legs] || 1;
+      const r    = cat <= 1 ? 'low' : cat <= 2 ? 'low' : cat === 3 ? 'med' : 'high';
+      return { score: cat, risk: r, label: ['','Sin acción','Acción futura','Acción pronto','Acción inmediata'][cat] || '—', action: ['','Postura normal','Corrección a largo plazo','Corrección próxima','Corrección inmediata'][cat] || '—' };
+    },
+  },
+  JSI: {
+    name: 'JSI — Job Strain Index',
+    fields: [
+      { id:'ie',label:'Intensidad esfuerzo',    type:'select', opts:['0.5 — Ligero','1 — Algo duro','3 — Duro','6 — Muy duro','9 — Casi máximo'] },
+      { id:'de',label:'Duración esfuerzo/ciclo',type:'select', opts:['0.5 — < 10%','1 — 10-29%','1.5 — 30-49%','2 — 50-79%','3 — ≥ 80%'] },
+      { id:'em',label:'Esfuerzos/minuto',       type:'select', opts:['0.5 — < 4','1 — 4-8','1.5 — 9-14','2 — 15-19','3 — ≥ 20'] },
+      { id:'pw',label:'Postura de muñeca',      type:'select', opts:['1 — Buena','1.5 — Regular','2 — Mala','3 — Muy mala'] },
+      { id:'sw',label:'Velocidad del trabajo',  type:'select', opts:['1 — Lenta','1 — Normal','1.5 — Rápida','2 — Muy rápida'] },
+      { id:'dd',label:'Duración tarea/día',     type:'select', opts:['0.25 — ≤ 1h','0.5 — 1-2h','0.75 — 2-4h','1 — 4-8h','1.5 — > 8h'] },
+    ],
+    calc: (v) => {
+      const ie = parseFloat(v.ie) || 1;
+      const de = parseFloat(v.de) || 1;
+      const em = parseFloat(v.em) || 1;
+      const pw = parseFloat(v.pw) || 1;
+      const sw = parseFloat(v.sw) || 1;
+      const dd = parseFloat(v.dd) || 1;
+      const s  = +(ie * de * em * pw * sw * dd).toFixed(2);
+      const r  = s <= 3 ? 'low' : s <= 5 ? 'med' : 'high';
+      return { score: s, risk: r, label: r==='low'?'Seguro':r==='med'?'Incierto':'Peligroso', action: r==='low'?'Sin acción':r==='med'?'Monitorear':'Rediseño inmediato' };
+    },
+  },
+};
+
+let currentToolKey = null;
+let toolValues = {};
+
+function loadTool(key) {
+  currentToolKey = key;
+  toolValues = {};
+  const tool = TOOLS[key];
+  if (!tool) return;
+
+  document.getElementById('tool-container').style.display = 'block';
+  document.getElementById('tool-title').textContent = tool.name;
+
+  // Highlight active button
+  document.querySelectorAll('#tool-btns .btn').forEach(b => b.className = 'btn btn-outline');
+  event.target.className = 'btn btn-primary';
+
+  const fields = document.getElementById('tool-fields');
+  fields.innerHTML = tool.fields.map(f => {
+    if (f.type === 'range') {
+      return `<div class="survey-q" style="margin-bottom:10px;">
+        <label>${f.label}</label>
+        <div class="slider-header">
+          <span style="font-size:11px;color:var(--text3);">${f.min} — ${f.max}</span>
+          <span class="slider-val" id="sv-${f.id}">${f.val}${f.id==='load'?'kg':'°'}</span>
+        </div>
+        <input type="range" min="${f.min}" max="${f.max}" value="${f.val}" step="${f.step||1}"
+          oninput="updateToolField('${f.id}',this.value,'${f.id==='load'?'kg':'°'}')">
+      </div>`;
     }
-
-    function drawScene() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        if(points.length === 0) return;
-        
-        const aTronco = calculateAngle(points[2], points[5], {x: points[5].x, y: 0});
-        const aBrazo = calculateAngle(points[5], points[2], points[3]);
-        
-        let color = '#16A34A'; let level = 'BAJO';
-        if(aTronco > 20 || aBrazo > 20) { color = '#D97706'; level = 'MEDIO'; }
-        if(aTronco > 60 || aBrazo > 60) { color = '#DC2626'; level = 'ALTO'; }
-
-        currentAngles = { tronco: aTronco.toFixed(1), brazo: aBrazo.toFixed(1), nivel: level, color: color };
-
-        const lbl = document.getElementById('risk-label');
-        lbl.innerText = level; lbl.style.background = color; lbl.style.color = "white";
-        document.getElementById('m-tronco').innerText = aTronco.toFixed(1)+'°';
-        document.getElementById('m-brazo').innerText = aBrazo.toFixed(1)+'°';
-
-        ctx.strokeStyle = color; ctx.lineWidth = 4;
-        for(let i=0; i<points.length-1; i++) {
-            ctx.beginPath(); ctx.moveTo(points[i].x, points[i].y);
-            ctx.lineTo(points[i+1].x, points[i+1].y); ctx.stroke();
-        }
-        points.forEach(p => {
-            ctx.fillStyle = color; ctx.beginPath(); ctx.arc(p.x, p.y, 12, 0, Math.PI*2); ctx.fill();
-            ctx.fillStyle = 'white'; ctx.font = 'bold 10px Inter'; ctx.textAlign='center';
-            ctx.fillText(p.id, p.x, p.y+4);
-        });
+    if (f.type === 'number') {
+      return `<div class="form-group" style="margin-bottom:10px;">
+        <label>${f.label}</label>
+        <input type="number" min="${f.min||0}" max="${f.max||9999}" step="${f.step||1}" value="${f.val||0}"
+          oninput="updateToolField('${f.id}',this.value,'')">
+      </div>`;
     }
-
-    function calculateAngle(p1, p2, p3) {
-        const v1 = {x: p1.x - p2.x, y: p1.y - p2.y}, v2 = {x: p3.x - p2.x, y: p3.y - p2.y};
-        const dot = v1.x * v2.x + v1.y * v2.y;
-        const mag1 = Math.sqrt(v1.x**2 + v1.y**2), mag2 = Math.sqrt(v2.x**2 + v2.y**2);
-        return (Math.acos(dot/(mag1*mag2)) * 180 / Math.PI) || 0;
+    if (f.type === 'select') {
+      return `<div class="form-group" style="margin-bottom:10px;">
+        <label>${f.label}</label>
+        <select onchange="updateToolField('${f.id}',this.value,'')">
+          ${f.opts.map(o => `<option value="${o.split(' — ')[0]}">${o}</option>`).join('')}
+        </select>
+      </div>`;
     }
+  }).join('');
 
-    // --- SISTEMA DE ENCUESTAS ---
-    const SURVEYS = {
-        RULA: ["Posición del Cuello (1-4)", "Inclinación de Tronco (1-4)", "Giro de Muñeca (1-2)", "Uso de Fuerza/Carga (0-3)"],
-        REBA: ["Postura de Piernas (1-4)", "Carga Acoplada (0-3)", "Actividad Muscular (0-2)", "Inclinación de Espalda (1-4)"],
-        NOM036: ["Masa de la carga (kg)", "Frecuencia (levantamientos/min)", "Distancia de transporte (m)", "Postura durante manejo"],
-        NIOSH: ["Peso Real (kg)", "Distancia Horizontal (cm)", "Ángulo de Asimetría", "Frecuencia de levantamiento"]
-    };
+  // Init defaults
+  tool.fields.forEach(f => {
+    toolValues[f.id] = f.type === 'select' ? f.opts[0].split(' — ')[0] : f.val;
+  });
+  updateToolResult();
+}
 
-    function loadSurvey() {
-        const tool = document.getElementById('toolSelector').value;
-        const box = document.getElementById('surveyBox');
-        const fields = document.getElementById('surveyFields');
-        if(!tool) { box.style.display = 'none'; return; }
-        box.style.display = 'block';
-        document.getElementById('surveyTitle').innerText = "Cuestionario de Evaluación " + tool;
-        fields.innerHTML = SURVEYS[tool].map(q => `<div><label>${q}</label><input type="text" class="manual-input" data-q="${q}"></div>`).join('');
-    }
+function updateToolField(id, val, unit) {
+  toolValues[id] = isNaN(+val) ? val : +val;
+  const sv = document.getElementById('sv-' + id);
+  if (sv) sv.textContent = val + unit;
+  updateToolResult();
+}
 
-    // --- GENERADOR DE REPORTES PDF ---
-    function generatePDF(type) {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        const company = document.getElementById('st-company').value;
-        const job = document.getElementById('st-job').value;
-        const plant = document.getElementById('st-plant').value;
-        const area = document.getElementById('st-area').value;
+function updateToolResult() {
+  if (!currentToolKey) return;
+  const tool   = TOOLS[currentToolKey];
+  const result = tool.calc(toolValues);
 
-        // Estilo de Encabezado
-        doc.setFillColor(0, 91, 154); doc.rect(0, 0, 210, 40, 'F');
-        doc.setTextColor(255, 255, 255); doc.setFontSize(22); doc.text("REPORTE ERGONÓMICO", 20, 25);
-        doc.setFontSize(10); doc.text(company.toUpperCase(), 150, 25);
+  const hero = document.getElementById('tool-hero');
+  hero.className = `result-hero result-bg-${result.risk}`;
+  document.getElementById('tool-score').textContent = result.score;
+  document.getElementById('tool-score').style.color = RISK_COLORS[result.risk];
+  document.getElementById('tool-label').textContent  = result.label;
+  document.getElementById('tool-action').textContent = result.action;
 
-        // Ficha Técnica
-        doc.setTextColor(0, 0, 0); doc.setFontSize(12); doc.text("DATOS DE LA ESTACIÓN", 20, 50);
-        doc.autoTable({
-            startY: 55,
-            body: [
-                ["Planta:", plant, "Área:", area],
-                ["Puesto:", job, "Fecha:", new Date().toLocaleDateString()]
-            ],
-            theme: 'grid'
-        });
+  // Breakdown
+  const br = document.getElementById('tool-breakdown');
+  if (result.extra) {
+    br.innerHTML = Object.entries(result.extra).map(([k,v])=>
+      `<div class="sb-row"><span class="sb-k">${k}</span><span class="sb-v">${v}</span></div>`
+    ).join('');
+  } else {
+    br.innerHTML = `<div class="sb-row"><span class="sb-k">Puntuación ${currentToolKey}</span><span class="sb-v">${result.score}</span></div>`;
+  }
 
-        // Resultados
-        let nextY = doc.lastAutoTable.finalY + 15;
-        doc.text("RESULTADOS DEL ANÁLISIS", 20, nextY);
-        
-        if(type === 'video') {
-            doc.autoTable({
-                startY: nextY + 5,
-                head: [['Métrica', 'Valor Detectado', 'Estado']],
-                body: [
-                    ['Flexión de Tronco', currentAngles.tronco + '°', currentAngles.nivel],
-                    ['Elevación de Brazos', currentAngles.brazo + '°', currentAngles.nivel]
-                ],
-                headStyles: {fillColor: [0, 91, 154]}
-            });
-        } else {
-            const inputs = document.querySelectorAll('.manual-input');
-            const surveyData = Array.from(inputs).map(i => [i.getAttribute('data-q'), i.value]);
-            doc.autoTable({
-                startY: nextY + 5,
-                head: [['Criterio Evaluado', 'Hallazgo/Puntaje']],
-                body: surveyData,
-                headStyles: {fillColor: [22, 163, 74]}
-            });
-        }
+  APP.currentScore = result.score;
+  APP.currentRisk  = result.risk;
+  APP.currentTool  = currentToolKey;
+}
 
-        // Recomendaciones Inteligentes
-        nextY = doc.lastAutoTable.finalY + 15;
-        doc.text("RECOMENDACIONES TÉCNICAS", 20, nextY);
-        let recs = ["• Realizar pausas activas cada 2 horas.", "• Capacitación en higiene postural."];
-        if(currentAngles.nivel === 'ALTO') {
-            recs.push("• REDISEÑO INMEDIATO: Ajustar altura de mesa de trabajo.");
-            recs.push("• Implementar ayudas mecánicas (polipastos/carros).");
-        }
-        doc.setFontSize(10);
-        recs.forEach((r, i) => doc.text(r, 25, nextY + 10 + (i*7)));
+function saveToolResult() {
+  if (!currentToolKey) { alert('Selecciona una herramienta primero.'); return; }
+  const tool   = TOOLS[currentToolKey];
+  const result = tool.calc(toolValues);
+  const ev = buildEvalRecord(currentToolKey, result.score, result.risk);
+  ev.params = { ...toolValues };
+  pushToHistory(ev);
+  alert(`✅ Resultado ${currentToolKey} guardado.`);
+}
 
-        doc.save(`Reporte_Ergo_${job}_${type}.pdf`);
-    }
+function generateToolPDF() {
+  if (!currentToolKey) { alert('Selecciona una herramienta.'); return; }
+  const tool   = TOOLS[currentToolKey];
+  const result = tool.calc(toolValues);
+  const params = Object.entries(toolValues).map(([k,v]) => {
+    const f = tool.fields.find(x => x.id === k);
+    return [f?.label || k, String(v)];
+  });
+  generatePDFDoc(currentToolKey, result.score, result.risk, result.label, result.action, params);
+}
 
-    init();
+// ══════════════════════════════════
+//  GUARDAR EVALUACIÓN
+// ══════════════════════════════════
+function saveCurrentEval() {
+  if (APP.currentScore === null) { alert('Realiza un análisis primero.'); return; }
+  const ev = buildEvalRecord('REBA', APP.currentScore, APP.currentRisk);
+  ev.angles = { ...APP.currentAngles };
+  pushToHistory(ev);
+  alert(`✅ Evaluación guardada (${APP.currentScore} pts — ${APP.currentRisk.toUpperCase()})`);
+}
+
+function buildEvalRecord(method, score, risk) {
+  return {
+    id:        Date.now(),
+    date:      new Date().toLocaleDateString('es-MX'),
+    time:      new Date().toLocaleTimeString('es-MX', {hour:'2-digit',minute:'2-digit'}),
+    company:   document.getElementById('st-company')?.value || 'Teleflex',
+    plant:     document.getElementById('st-plant')?.value   || '—',
+    area:      document.getElementById('st-area')?.value    || '—',
+    job:       document.getElementById('st-job')?.value     || '—',
+    emp:       document.getElementById('st-emp')?.value     || '—',
+    evaluator: document.getElementById('st-evaluator')?.value || '—',
+    shift:     document.getElementById('st-shift')?.value   || '—',
+    method, score, risk,
+  };
+}
+
+// BUG #3 CORREGIDO — history se persiste en localStorage
+function pushToHistory(ev) {
+  APP.history.unshift(ev);
+  localStorage.setItem('ergonom_v6_hist', JSON.stringify(APP.history));
+  const nb = document.getElementById('nb-hist');
+  const hc = document.getElementById('hist-count');
+  if (nb) nb.textContent = APP.history.length;
+  if (hc) hc.textContent = APP.history.length;
+}
+
+function clearHistory() {
+  if (!confirm('¿Eliminar todo el historial?')) return;
+  APP.history = [];
+  localStorage.removeItem('ergonom_v6_hist');
+  refreshHistory();
+  refreshDashboard();
+}
+
+// ══════════════════════════════════
+//  HISTORIAL
+// ══════════════════════════════════
+function refreshHistory() {
+  const wrap = document.getElementById('hist-wrap');
+  if (!APP.history.length) {
+    wrap.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3);"><div style="font-size:36px;margin-bottom:10px;">📂</div><div>Sin evaluaciones guardadas</div></div>';
+    return;
+  }
+  wrap.innerHTML = `<div style="overflow-x:auto;"><table class="hist-table">
+    <thead><tr>
+      <th>FOLIO</th><th>FECHA</th><th>MÉTODO</th><th>PUESTO</th><th>ÁREA</th><th>PUNTUACIÓN</th><th>RIESGO</th><th></th>
+    </tr></thead>
+    <tbody>
+    ${APP.history.map(ev => `<tr>
+      <td style="font-family:var(--mono);color:var(--text3);font-size:11px;">#${String(ev.id).slice(-6)}</td>
+      <td>${ev.date} ${ev.time}</td>
+      <td style="font-family:var(--mono);font-size:11px;">${ev.method}</td>
+      <td>${ev.job}</td>
+      <td>${ev.area}</td>
+      <td style="font-family:var(--mono);font-weight:700;color:${RISK_COLORS[ev.risk]||'#888'};">${ev.score}</td>
+      <td><span class="risk-pill pill-${ev.risk}">${ev.risk==='low'?'BAJO':ev.risk==='med'?'MODERADO':'ALTO'}</span></td>
+      <td><button onclick="deleteEval(${ev.id})" style="background:none;border:none;cursor:pointer;color:#DC2626;font-size:14px;" title="Eliminar">✕</button></td>
+    </tr>`).join('')}
+    </tbody>
+  </table></div>`;
+}
+
+function deleteEval(id) {
+  APP.history = APP.history.filter(e => e.id !== id);
+  localStorage.setItem('ergonom_v6_hist', JSON.stringify(APP.history));
+  refreshHistory();
+  refreshDashboard();
+  const nb = document.getElementById('nb-hist');
+  if (nb) nb.textContent = APP.history.length;
+}
+
+// ══════════════════════════════════
+//  DASHBOARD
+// ══════════════════════════════════
+function refreshDashboard() {
+  const evs  = APP.history;
+  const low  = evs.filter(e => e.risk === 'low').length;
+  const med  = evs.filter(e => e.risk === 'med').length;
+  const high = evs.filter(e => e.risk === 'high').length;
+
+  document.getElementById('d-total').textContent = evs.length;
+  document.getElementById('d-low').textContent   = low;
+  document.getElementById('d-med').textContent   = med;
+  document.getElementById('d-high').textContent  = high;
+
+  const labels = evs.slice(0,10).reverse().map(e => e.method + ' ' + e.date.slice(0,5));
+  const scores = evs.slice(0,10).reverse().map(e => parseFloat(e.score) || 0);
+  const colors = evs.slice(0,10).reverse().map(e => (RISK_COLORS[e.risk] || '#888') + 'aa');
+
+  if (APP.charts.scores) APP.charts.scores.destroy();
+  const c1 = document.getElementById('chartScores');
+  if (c1) APP.charts.scores = new Chart(c1.getContext('2d'), {
+    type:'bar',
+    data:{ labels, datasets:[{ data:scores, backgroundColor:colors, borderRadius:5 }] },
+    options:{ plugins:{legend:{display:false}}, scales:{
+      x:{ticks:{color:'#8896A7',font:{size:9}},grid:{color:'#DDE3EA'}},
+      y:{ticks:{color:'#8896A7'},grid:{color:'#DDE3EA'},beginAtZero:true}
+    }, responsive:true, maintainAspectRatio:false }
+  });
+
+  if (APP.charts.dist) APP.charts.dist.destroy();
+  const c2 = document.getElementById('chartDist');
+  if (c2 && evs.length > 0) APP.charts.dist = new Chart(c2.getContext('2d'), {
+    type:'doughnut',
+    data:{ labels:['Bajo','Moderado','Alto'], datasets:[{ data:[low,med,high], backgroundColor:['#16A34A99','#D9770699','#DC262699'], borderWidth:0 }] },
+    options:{ plugins:{legend:{labels:{color:'#4A5568',font:{size:11}}}}, responsive:true, maintainAspectRatio:false }
+  });
+}
+
+// ══════════════════════════════════
+//  EXPORTAR EXCEL — BUG #2 CORREGIDO
+// ══════════════════════════════════
+function exportToExcel() {
+  if (!APP.history.length) { alert('No hay evaluaciones para exportar.'); return; }
+
+  const ws_data = [
+    ['Folio','Fecha','Hora','Empresa','Planta','Área','Puesto','No. Emp','Evaluador','Turno','Método','Puntuación','Riesgo'],
+    ...APP.history.map(ev => [
+      '#'+String(ev.id).slice(-6),
+      ev.date, ev.time,
+      ev.company, ev.plant, ev.area, ev.job,
+      ev.emp, ev.evaluator, ev.shift,
+      ev.method, ev.score,
+      ev.risk === 'low' ? 'BAJO' : ev.risk === 'med' ? 'MODERADO' : 'ALTO',
+    ]),
+  ];
+
+  const wb  = XLSX.utils.book_new();
+  const ws  = XLSX.utils.aoa_to_sheet(ws_data);
+  ws['!cols'] = ws_data[0].map(() => ({ wch: 18 }));
+  XLSX.utils.book_append_sheet(wb, ws, 'Evaluaciones');
+
+  // Hoja resumen
+  const stats = [
+    ['Métrica','Valor'],
+    ['Total evaluaciones', APP.history.length],
+    ['Riesgo bajo',  APP.history.filter(e=>e.risk==='low').length],
+    ['Riesgo moderado', APP.history.filter(e=>e.risk==='med').length],
+    ['Riesgo alto',  APP.history.filter(e=>e.risk==='high').length],
+    ['Fecha exportación', new Date().toLocaleDateString('es-MX')],
+  ];
+  const ws2 = XLSX.utils.aoa_to_sheet(stats);
+  XLSX.utils.book_append_sheet(wb, ws2, 'Resumen');
+
+  XLSX.writeFile(wb, `ErgoNOM_Evaluaciones_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+// ══════════════════════════════════
+//  PDF — BUG #8 CORREGIDO
+// ══════════════════════════════════
+function generatePDF() {
+  if (APP.currentScore === null) { alert('Realiza un análisis primero.'); return; }
+  const angRows = Object.entries(APP.currentAngles)
+    .filter(([,v]) => v != null)
+    .map(([k,v]) => {
+      const r = jointRisk(v, k);
+      return [k.charAt(0).toUpperCase()+k.slice(1), v+'°', r==='low'?'BAJO':r==='med'?'MODERADO':'ALTO'];
+    });
+  generatePDFDoc('REBA', APP.currentScore, APP.currentRisk,
+    APP.currentRisk==='low'?'Riesgo bajo':APP.currentRisk==='med'?'Riesgo medio':'Riesgo alto',
+    APP.currentRisk==='low'?'Sin cambios inmediatos':APP.currentRisk==='med'?'Investigar y cambiar':'Cambio inmediato',
+    angRows, true);
+}
+
+function generatePDFDoc(method, score, risk, label, action, dataRows, isAngles=false) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const company   = document.getElementById('st-company')?.value || 'Teleflex';
+  const job       = document.getElementById('st-job')?.value     || 'Puesto';
+  const plant     = document.getElementById('st-plant')?.value   || '—';
+  const area      = document.getElementById('st-area')?.value    || '—';
+  const evaluator = document.getElementById('st-evaluator')?.value || '—';
+  const fecha     = new Date().toLocaleDateString('es-MX', { dateStyle:'long' });
+  const folio     = 'ERG-' + Date.now().toString().slice(-6);
+
+  // Header
+  doc.setFillColor(0,91,154); doc.rect(0,0,210,40,'F');
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(20); doc.setFont('helvetica','bold');
+  doc.text('REPORTE ERGONÓMICO', 15, 18);
+  doc.setFontSize(9); doc.setFont('helvetica','normal');
+  doc.text(`${company.toUpperCase()} · ${method} · ${fecha}`, 15, 27);
+  doc.text(`Folio: ${folio}`, 15, 34);
+
+  // Risk banner
+  const rCol = risk==='low'?[22,163,74]:risk==='med'?[217,119,6]:[220,38,38];
+  doc.setFillColor(...rCol); doc.rect(0,40,210,14,'F');
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(14); doc.setFont('helvetica','bold');
+  doc.text(`${label.toUpperCase()} — Puntuación ${method}: ${score}`, 15, 50);
+
+  // Datos del puesto
+  doc.setTextColor(0,0,0);
+  doc.setFontSize(11); doc.text('DATOS DE LA ESTACIÓN', 15, 66);
+  doc.autoTable({
+    startY: 70,
+    body:[['Planta:',plant,'Área:',area],['Puesto:',job,'Evaluador:',evaluator]],
+    theme:'grid', styles:{fontSize:9}
+  });
+
+  // Resultados
+  const nextY = doc.lastAutoTable.finalY + 10;
+  doc.setFontSize(11); doc.text(`RESULTADOS — ${method}`, 15, nextY);
+  const head = isAngles
+    ? [['Segmento','Ángulo','Riesgo']]
+    : [['Parámetro','Valor']];
+  doc.autoTable({
+    startY: nextY + 4,
+    head, body: dataRows,
+    headStyles:{fillColor:[0,91,154]},
+    styles:{fontSize:9}
+  });
+
+  // Recomendaciones
+  const recY = doc.lastAutoTable.finalY + 10;
+  doc.setFontSize(11); doc.text('RECOMENDACIONES', 15, recY);
+  const recs = ['• Pausas activas cada 2 horas.','• Capacitación en higiene postural.'];
+  if (risk === 'med') recs.push('• Revisar diseño del puesto a mediano plazo.');
+  if (risk === 'high') {
+    recs.push('• REDISEÑO INMEDIATO del puesto de trabajo.');
+    recs.push('• Implementar ayudas mecánicas si aplica.');
+    recs.push('• Evaluación médica del trabajador.');
+  }
+  doc.setFontSize(9);
+  recs.forEach((r,i) => doc.text(r, 18, recY + 8 + i*6));
+
+  // Footer
+  doc.setFontSize(7); doc.setTextColor(150,150,150);
+  doc.text(`ErgoNOM v6.0 · NOM-036-STPS-2018 · ${fecha} · Folio: ${folio}`, 15, 285);
+
+  doc.save(`Reporte_Ergo_${method}_${job.replace(/ /g,'_')}_${folio}.pdf`);
+}
+
+// ══════════════════════════════════
+//  INICIALIZACIÓN
+// ══════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  initElements();
+  initMediaPipe();
+
+  // Fecha de hoy
+  const d = document.getElementById('st-date');
+  if (d) d.value = new Date().toISOString().slice(0,10);
+
+  // Contadores iniciales
+  const nb = document.getElementById('nb-hist');
+  const hc = document.getElementById('hist-count');
+  if (nb) nb.textContent = APP.history.length;
+  if (hc) hc.textContent = APP.history.length;
+
+  // Default: modo auto
+  setDetectMode('auto');
+});
 </script>
 
 </body>
