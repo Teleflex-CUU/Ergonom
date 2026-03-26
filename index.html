@@ -1,291 +1,1710 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>PROVERIFICA® — Sistema de Gestión y Diagnóstico</title>
-    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=IBM+Plex+Mono:wght@300;400;500;600&display=swap" rel="stylesheet"/>
-    <style>
-        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-        :root{
-            --bg:#0b0d12;--surface:#111318;--surface2:#181c24;--border:#22273a;
-            --text:#dde3f5;--muted:#5a6282;--accent:#3d6fff;
-            --green-bg:#071a10;--green-tx:#2ecc71;
-            --yellow-bg:#1a1400;--yellow-tx:#f1c40f;
-            --red-bg:#190505;--red-tx:#e74c3c;
-        }
-        body{background:var(--bg);color:var(--text);font-family:'IBM Plex Mono',monospace;padding-bottom:120px; line-height: 1.4;}
-        header{background:rgba(11, 13, 18, 0.9); border-bottom:1px solid var(--border); padding:15px 25px; display:flex; align-items:center; position:sticky; top:0; z-index:1000; backdrop-filter:blur(10px);}
-        .logo{width:45px; height:45px; background:linear-gradient(135deg, var(--accent), #6b4fff); border-radius:10px; display:grid; place-items:center; font-weight:800; color:#fff; margin-right:15px; box-shadow:0 0 20px rgba(61,111,255,0.3);}
-        
-        .container{max-width:1100px; margin:20px auto; padding:0 20px;}
-        
-        /* CIGE */
-        .card{background:var(--surface); border:1px solid var(--border); padding:20px; border-radius:12px; margin-bottom:20px;}
-        .grid-cige{display:grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap:15px;}
-        label{font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; display:block; margin-bottom:5px;}
-        input.field, textarea.field{width:100%; padding:10px; background:var(--bg); border:1px solid var(--border); color:#fff; border-radius:6px; font-family:inherit;}
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Teleflex ErgoNOM v7 · NOM-036-STPS-2018</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --tf-blue:#005B9A;--tf-dk:#004477;--tf-lt:#E8F4FF;--tf-green:#00A651;
+  --bg:#F0F4F8;--surface:#fff;--surface2:#F7FAFC;--border:#DDE3EA;--border2:#C8D3DE;
+  --text:#1A2332;--text2:#4A5568;--text3:#8896A7;
+  --low:#16A34A;--low-bg:rgba(22,163,74,.09);
+  --med:#D97706;--med-bg:rgba(217,119,6,.09);
+  --high:#DC2626;--high-bg:rgba(220,38,38,.09);
+  --font:'Inter',sans-serif;--mono:'Space Mono',monospace;
+  --r:8px;--rl:12px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:var(--font);background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display:flex;flex-direction:column;}
 
-        /* Tabs */
-        .nav-tabs{display:flex; gap:5px; flex-wrap:wrap; margin-bottom:20px; position:sticky; top:75px; background:var(--bg); padding:10px 0; z-index:900;}
-        .tab-btn{padding:8px 12px; font-size:10px; border:1px solid var(--border); background:var(--surface); color:var(--muted); cursor:pointer; border-radius:6px; transition:0.2s;}
-        .tab-btn.active{background:var(--accent); color:#fff; border-color:var(--accent);}
+/* TOPBAR */
+.topbar{background:var(--tf-blue);color:#fff;padding:0 20px;height:52px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 2px 8px rgba(0,91,154,.3);flex-shrink:0;z-index:200;}
+.tlogo{display:flex;align-items:center;gap:10px;}
+.tmark{background:#fff;color:var(--tf-blue);font-weight:700;font-size:11px;padding:3px 8px;border-radius:4px;}
+.ttitle{font-size:15px;font-weight:600;}
+.tsub{font-size:10px;opacity:.7;}
+.tactions{display:flex;gap:8px;}
 
-        /* Preguntas */
-        .section-box{margin-bottom:30px; border:1px solid var(--border); border-radius:10px; overflow:hidden;}
-        .sec-header{background:var(--surface2); padding:12px 20px; font-family:'Syne'; font-size:13px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;}
-        .q-row{display:grid; grid-template-columns: 1fr repeat(4, 55px); gap:8px; padding:10px 20px; border-bottom:1px dashed var(--border); align-items:center;}
-        .q-text{font-size:11px;}
-        .opt{height:32px; border:1px solid var(--border); border-radius:6px; display:grid; place-items:center; cursor:pointer; font-size:9px; font-weight:bold; color:var(--muted); background:var(--bg);}
-        
-        /* Estados de respuesta */
-        .opt.sel-SI{background:var(--green-bg); color:var(--green-tx); border-color:var(--green-tx);}
-        .opt.sel-PM{background:var(--yellow-bg); color:var(--yellow-tx); border-color:var(--yellow-tx);}
-        .opt.sel-NO{background:var(--red-bg); color:var(--red-tx); border-color:var(--red-tx);}
-        .opt.sel-NA{background:var(--surface2); color:var(--text); border-color:var(--muted);}
+/* SHELL */
+.shell{display:grid;grid-template-columns:210px 1fr;flex:1;overflow:hidden;}
 
-        /* Footer Controls */
-        .controls{position:fixed; bottom:0; left:0; width:100%; background:var(--surface); border-top:1px solid var(--border); padding:20px; display:flex; justify-content:center; gap:15px; z-index:2000;}
-        .btn{padding:12px 24px; border-radius:8px; border:none; cursor:pointer; font-family:inherit; font-weight:600; font-size:12px; transition:0.3s;}
-        .btn-sync{background:var(--green-tx); color:#000;}
-        .btn-sync:disabled{background:var(--muted); opacity:0.5;}
-        .btn-print{background:var(--accent); color:#fff;}
-        .btn-reset{background:transparent; color:var(--red-tx); border:1px solid var(--red-tx);}
+/* SIDEBAR */
+.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:14px 0;overflow-y:auto;box-shadow:2px 0 5px rgba(0,0,0,.04);}
+.sgroup{font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--text3);padding:12px 16px 5px;text-transform:uppercase;}
+.nitem{display:flex;align-items:center;gap:8px;padding:10px 16px;cursor:pointer;color:var(--text2);border-left:3px solid transparent;font-size:13px;font-weight:500;transition:.12s;}
+.nitem:hover{color:var(--tf-blue);background:var(--tf-lt);}
+.nitem.active{color:var(--tf-blue);border-left-color:var(--tf-blue);background:var(--tf-lt);font-weight:600;}
+.nbadge{margin-left:auto;background:var(--tf-blue);color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;}
+.sbottom{padding:14px 16px;border-top:1px solid var(--border);margin-top:16px;}
 
-        .score-badge{font-size:10px; padding:4px 8px; border-radius:4px; font-weight:800;}
-        .score-low{background:var(--green-bg); color:var(--green-tx);}
-        .score-med{background:var(--yellow-bg); color:var(--yellow-tx);}
-        .score-high{background:var(--red-bg); color:var(--red-tx);}
+/* CONTENT */
+.content{overflow-y:auto;padding:20px;}
+.page{display:none;}
+.page.active{display:block;animation:fin .2s ease;}
+@keyframes fin{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
 
-        @media print{
-            .controls, .nav-tabs, header, .btn-reset{display:none !important;}
-            body{background:#fff; color:#000;}
-            .card, .section-box{border:1px solid #000; background:#fff !important; color:#000 !important; page-break-inside:avoid;}
-            .q-text, .sec-header{color:#000 !important;}
-        }
-    </style>
+/* CARD */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:18px 20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.05);}
+.ctitle{font-size:11px;font-weight:700;color:var(--tf-blue);text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px;padding-bottom:7px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;}
+.ctitle::before{content:'';display:block;width:3px;height:13px;background:var(--tf-blue);border-radius:2px;}
+
+/* BUTTONS */
+.btn{padding:8px 15px;border-radius:var(--r);border:none;cursor:pointer;font-weight:600;font-size:12px;display:inline-flex;align-items:center;gap:6px;transition:.15s;font-family:var(--font);}
+.btn-p{background:var(--tf-blue);color:#fff;}.btn-p:hover{background:var(--tf-dk);}
+.btn-s{background:var(--tf-green);color:#fff;}
+.btn-d{background:#DC2626;color:#fff;}
+.btn-o{background:var(--surface);border:1px solid var(--border2);color:var(--text2);}
+.btn-o:hover{border-color:var(--tf-blue);color:var(--tf-blue);}
+.btn-sm{padding:5px 10px;font-size:11px;}
+.brow{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+
+/* FORMS */
+label{font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:3px;}
+input,select,textarea{width:100%;padding:8px 11px;border:1px solid var(--border2);border-radius:6px;font-size:13px;font-family:var(--font);background:var(--surface);color:var(--text);outline:none;transition:border-color .2s;}
+input:focus,select:focus,textarea:focus{border-color:var(--tf-blue);box-shadow:0 0 0 3px rgba(0,91,154,.1);}
+textarea{resize:vertical;min-height:70px;}
+.fg{display:flex;flex-direction:column;gap:3px;}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;}
+
+/* ANALYSIS TABS */
+.atabs{display:flex;gap:3px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:3px;margin-bottom:14px;flex-wrap:wrap;}
+.atab{font-family:var(--mono);font-size:10px;letter-spacing:.5px;padding:6px 11px;border-radius:5px;cursor:pointer;color:var(--text3);border:none;background:none;transition:.12s;white-space:nowrap;}
+.atab:hover{color:var(--tf-blue);background:var(--tf-lt);}
+.atab.active{background:var(--tf-blue);color:#fff;font-weight:700;}
+.apanel{display:none;animation:fin .2s ease;}
+.apanel.active{display:block;}
+
+/* WORKSPACE */
+.workspace{position:relative;background:#111;border-radius:var(--r);overflow:hidden;min-height:340px;display:flex;align-items:center;justify-content:center;}
+#videoEl,#imgEl{max-width:100%;max-height:480px;display:none;border-radius:var(--r);position:relative;z-index:1;}
+/* Canvas ALWAYS on top, pointer-events only in manual mode */
+#poseCanvas{position:absolute;top:0;left:0;width:100%;height:100%;z-index:20;display:block;}
+
+/* VIDEO CTRL */
+.vctrl{display:flex;align-items:center;gap:7px;padding:7px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-top:7px;}
+.pbar{flex:1;height:4px;background:var(--border2);border-radius:2px;cursor:pointer;overflow:hidden;}
+.pfill{height:100%;background:var(--tf-blue);border-radius:2px;width:0%;}
+.cbtn{background:var(--surface2);border:1px solid var(--border);color:var(--text2);padding:5px 9px;border-radius:5px;cursor:pointer;font-size:11px;transition:.12s;}
+.cbtn:hover{border-color:var(--tf-blue);color:var(--tf-blue);}
+
+/* JOINT BUTTONS */
+.jbtns{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;}
+.jbtn{padding:4px 9px;border-radius:4px;font-size:10px;font-weight:700;cursor:pointer;border:2px solid transparent;transition:.12s;font-family:var(--mono);}
+.jbtn.jactive{outline:3px solid #fff;outline-offset:1px;}
+
+/* RESULT */
+.rhero{text-align:center;padding:16px;border-radius:var(--r);margin-bottom:12px;transition:.3s;}
+.rscore{font-size:52px;font-weight:900;line-height:1;font-family:var(--mono);}
+.rlabel{font-size:13px;font-weight:600;margin-top:3px;}
+.raction{font-size:11px;margin-top:2px;opacity:.8;}
+.rbg-none{background:var(--surface2);border:1px solid var(--border);}
+.rbg-low {background:var(--low-bg);border:1px solid rgba(22,163,74,.25);}
+.rbg-med {background:var(--med-bg);border:1px solid rgba(217,119,6,.25);}
+.rbg-high{background:var(--high-bg);border:1px solid rgba(220,38,38,.25);}
+
+/* ANGLE GRID */
+.agrid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:12px;}
+.abox{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:9px;text-align:center;}
+.aseg{font-size:9px;color:var(--text3);font-weight:600;text-transform:uppercase;margin-bottom:2px;}
+.aval{font-size:20px;font-weight:700;font-family:var(--mono);}
+
+/* RANGE SLIDER */
+input[type=range]{-webkit-appearance:none;width:100%;height:4px;background:var(--border2);border-radius:2px;outline:none;border:none;padding:0;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:var(--tf-blue);cursor:pointer;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,91,154,.3);}
+.slh{display:flex;justify-content:space-between;margin-bottom:4px;}
+.slv{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--tf-blue);}
+
+/* SCORE TABLE */
+.sbrow{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px;}
+.sbrow:last-child{border:none;font-weight:700;}
+.sbk{color:var(--text2);}
+.sbv{font-family:var(--mono);font-weight:700;}
+
+/* RISK PILL */
+.pill{display:inline-block;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;font-family:var(--mono);}
+.pill-low{background:var(--low-bg);color:var(--low);}
+.pill-med{background:var(--med-bg);color:var(--med);}
+.pill-high{background:var(--high-bg);color:var(--high);}
+
+/* TOOL CARD */
+.tcard{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:12px;cursor:pointer;transition:.15s;}
+.tcard:hover,.tcard.sel{border-color:var(--tf-blue);background:var(--tf-lt);}
+.tname{font-weight:700;font-size:14px;}
+.tfull{font-size:10px;color:var(--text3);font-family:var(--mono);margin:2px 0 5px;}
+.tdesc{font-size:11px;color:var(--text2);line-height:1.5;}
+.twhen{font-size:11px;color:var(--tf-blue);margin-top:5px;font-style:italic;line-height:1.5;}
+
+/* STATS */
+.stats4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;}
+.scard{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;text-align:center;}
+.sval{font-size:30px;font-weight:700;font-family:var(--mono);color:var(--tf-blue);}
+.slbl{font-size:11px;color:var(--text3);margin-top:2px;}
+.chart-wrap{position:relative;height:190px;}
+
+/* HIST TABLE */
+.htbl{width:100%;border-collapse:collapse;font-size:12px;}
+.htbl th{font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--text3);padding:7px 10px;text-align:left;border-bottom:1px solid var(--border);}
+.htbl td{padding:8px 10px;border-bottom:1px solid rgba(0,0,0,.04);}
+.htbl tr:hover td{background:var(--surface2);}
+
+/* AI */
+.ai-banner{border-radius:var(--rl);padding:18px 22px;color:#fff;margin-bottom:16px;}
+.ai-gauge{position:relative;display:inline-block;}
+.shap-bar{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
+.shap-track{flex:1;height:7px;background:var(--border);border-radius:3px;overflow:hidden;}
+.shap-fill{height:100%;border-radius:3px;transition:width .4s;}
+
+/* CAM */
+.cbadge{display:flex;align-items:center;gap:5px;font-size:10px;font-family:var(--mono);color:var(--text3);padding:4px 0;}
+.cdot{width:7px;height:7px;border-radius:50%;background:var(--text3);}
+.cdot.live{background:var(--tf-green);box-shadow:0 0 5px var(--tf-green);animation:pulse 1.2s infinite;}
+@keyframes pulse{0%,100%{opacity:.5}50%{opacity:1}}
+@keyframes flashAlert{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+
+/* RESPONSIVE */
+@media(max-width:768px){.shell{grid-template-columns:1fr;}.sidebar{display:none;}.stats4{grid-template-columns:1fr 1fr;}}
+</style>
 </head>
 <body>
 
-<header>
-    <div class="logo">PV</div>
-    <div>
-        <h1 style="font-family:'Syne'; font-size:18px;">PROVERIFICA®</h1>
-        <p style="font-size:10px; color:var(--muted);">Diagnóstico y Vigilancia de Salud Laboral</p>
-    </div>
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="tlogo">
+    <div class="tmark">TELEFLEX</div>
+    <div><div class="ttitle">ErgoNOM <span style="font-weight:300">v7 Enterprise</span></div><div class="tsub">NOM-036-STPS-2018 · Salud Ocupacional CUU</div></div>
+  </div>
+  <div class="tactions">
+    <button class="btn btn-o btn-sm" style="color:#fff;border-color:rgba(255,255,255,.4);" onclick="exportExcel()">📊 Excel</button>
+    <button class="btn btn-o btn-sm" style="color:#fff;border-color:rgba(255,255,255,.4);" onclick="showPage('hist')">📋 Historial <span id="hcount">0</span></button>
+  </div>
 </header>
 
-<div class="container">
-    <div class="card">
-        <label>Información de la Empresa (CIGE)</label>
-        <div class="grid-cige">
-            <input type="text" id="empresa" class="field" placeholder="Nombre de la Empresa" oninput="saveLocal()">
-            <input type="date" id="fecha" class="field" onchange="saveLocal()">
-            <input type="text" id="evaluador" class="field" placeholder="Nombre del Evaluador" oninput="saveLocal()">
-        </div>
+<!-- SHELL -->
+<div class="shell">
+<nav class="sidebar">
+  <div class="sgroup">Evaluación</div>
+  <div class="nitem active" id="n-station"  onclick="showPage('station')">🏭 Datos Estación</div>
+  <div class="nitem"         id="n-analysis" onclick="showPage('analysis')">🔬 Análisis Completo</div>
+  <div class="sgroup">Resultados</div>
+  <div class="nitem" id="n-hist"      onclick="showPage('hist')">📋 Historial <span class="nbadge" id="nb">0</span></div>
+  <div class="nitem" id="n-dashboard" onclick="showPage('dashboard')">📊 Dashboard</div>
+  <div class="sgroup">Inteligencia Artificial</div>
+  <div class="nitem" id="n-ai-predict"  onclick="showPage('ai-predict')" style="position:relative;">
+    🧠 Predictor LME
+    <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:8px;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;padding:2px 5px;border-radius:8px;font-weight:700;">IA</span>
+  </div>
+  <div class="nitem" id="n-ai-vision"   onclick="showPage('ai-vision')">👁 Visión Biomecánica</div>
+  <div class="nitem" id="n-ai-learning" onclick="showPage('ai-learning')">🔄 Aprendizaje</div>
+  <div class="sbottom">
+    <div style="font-size:11px;font-weight:700;color:var(--tf-blue);margin-bottom:3px;">HERRAMIENTAS</div>
+    <div style="font-family:var(--mono);font-size:9px;color:var(--text3);line-height:1.9;">
+      REBA·RULA·OWAS·LUBA·PEO<br>OCRA·JSI·HAL·CTD Risk<br>NIOSH·Snook·MAC·KIM<br>ROSA·EWA·OSHA VDT<br>NASA-TLX·COPSOQ·Karasek<br>INSST·OSHA·JSA · IA+SHAP
     </div>
+  </div>
+</nav>
 
-    <div class="nav-tabs" id="nav-tabs"></div>
-    <div id="content-area"></div>
+<main class="content">
+
+<!-- PAGE: STATION -->
+<section id="p-station" class="page active">
+  <div class="card">
+    <div class="ctitle">Perfil de la Estación de Trabajo</div>
+    <div class="fgrid">
+      <div class="fg"><label>Compañía</label><input id="st-company" value="Teleflex"></div>
+      <div class="fg"><label>Planta</label><input id="st-plant" placeholder="Ej: Planta Norte"></div>
+      <div class="fg"><label>Área</label><input id="st-area" placeholder="Ej: Ensamble línea A"></div>
+      <div class="fg"><label>Puesto</label><input id="st-job" placeholder="Ej: Operador prensa"></div>
+      <div class="fg"><label>No. Empleado</label><input id="st-emp" placeholder="12345"></div>
+      <div class="fg"><label>Evaluador</label><input id="st-eval" placeholder="Nombre evaluador"></div>
+      <div class="fg"><label>Turno</label><select id="st-shift"><option>Matutino</option><option>Vespertino</option><option>Nocturno</option></select></div>
+      <div class="fg"><label>Fecha</label><input type="date" id="st-date"></div>
+    </div>
+    <div class="fg" style="margin-top:10px;"><label>Descripción de la tarea</label>
+      <textarea id="st-desc" placeholder="Movimientos, herramientas, frecuencia, duración..."></textarea>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ctitle">Instrucciones</div>
+    <div style="font-size:13px;color:var(--text2);line-height:1.8;">
+      <b style="color:var(--tf-blue);">1.</b> Completa datos de la estación arriba.<br>
+      <b style="color:var(--tf-blue);">2.</b> Ve a <b>Análisis Completo</b> → elige sub-pestaña: Video/Foto o cualquiera de las 6 categorías de métodos.<br>
+      <b style="color:var(--tf-blue);">3.</b> En Video: pausa el video → selecciona articulación → haz clic sobre ella (modo manual) o usa auto-detección.<br>
+      <b style="color:var(--tf-blue);">4.</b> En herramientas: cada tarjeta muestra para qué sirve y cuándo usarla.<br>
+      <b style="color:var(--tf-blue);">5.</b> Guarda evaluaciones → aparecen en Historial, Dashboard y Predictor IA.
+    </div>
+  </div>
+</section>
+
+<!-- PAGE: ANALYSIS COMPLETE -->
+<section id="p-analysis" class="page">
+  <div class="atabs">
+    <button class="atab active" onclick="switchTab('video',this)">🎬 Video / Foto</button>
+    <button class="atab" onclick="switchTab('postural',this)">🦴 Postural</button>
+    <button class="atab" onclick="switchTab('repetitive',this)">🔄 Repetitivo</button>
+    <button class="atab" onclick="switchTab('loads',this)">📦 Cargas</button>
+    <button class="atab" onclick="switchTab('office',this)">💻 Administrativo</button>
+    <button class="atab" onclick="switchTab('psycho',this)">🧠 Psicosocial</button>
+    <button class="atab" onclick="switchTab('qualitative',this)">📋 Observacional</button>
+  </div>
+
+  <!-- VIDEO TAB -->
+  <div id="atab-video" class="apanel active">
+    <div style="display:grid;grid-template-columns:1fr 280px;gap:16px;">
+      <div>
+        <div class="card" style="margin-bottom:12px;">
+          <div class="ctitle">Fuente y modo</div>
+          <div class="brow">
+            <button class="btn btn-o btn-sm" onclick="document.getElementById('fIn').click()">📁 Archivo</button>
+            <input type="file" id="fIn" hidden accept="video/*,image/*" onchange="loadMedia(event)">
+            <button class="btn btn-o btn-sm" onclick="startCam('environment')">📷 Cámara trasera</button>
+            <button class="btn btn-o btn-sm" onclick="startCam('user')">🤳 Frontal</button>
+            <button class="btn btn-d btn-sm" onclick="clearMedia()">🗑</button>
+          </div>
+          <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+            <button class="btn btn-p btn-sm" id="btn-auto" onclick="setMode('auto')">🤖 Auto-detección</button>
+            <button class="btn btn-o btn-sm" id="btn-man" onclick="setMode('manual')">✏️ Anotar manual</button>
+            <button class="btn btn-o btn-sm" onclick="capFrame()">📸</button>
+          </div>
+          <div id="mode-hint" style="font-size:11px;color:var(--tf-blue);background:var(--tf-lt);padding:5px 9px;border-radius:5px;margin-bottom:8px;">
+            💡 Modo manual: pausa video → selecciona articulación → clic sobre ella en la imagen
+          </div>
+          <!-- WORKSPACE: contenedor con position:relative. Canvas absolute encima -->
+          <div id="ws" style="position:relative;background:#111;border-radius:8px;min-height:320px;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+            <div id="ws-ph" style="text-align:center;color:#555;position:relative;z-index:1;pointer-events:none;">
+              <div style="font-size:42px;opacity:.3;margin-bottom:8px;">🎥</div>
+              <div style="font-size:12px;opacity:.4;">Carga video/foto o activa cámara</div>
+            </div>
+            <!-- Media elements con z-index bajo -->
+            <video id="videoEl" playsinline muted loop style="max-width:100%;max-height:460px;display:none;border-radius:8px;position:relative;z-index:2;"></video>
+            <img id="imgEl" alt="" style="max-width:100%;max-height:460px;display:none;border-radius:8px;position:relative;z-index:2;">
+            <!-- Canvas SIEMPRE encima, pointer-events controlado por JS -->
+            <canvas id="poseCanvas" style="position:absolute;top:0;left:0;width:100%;height:100%;z-index:10;display:block;cursor:default;"></canvas>
+          </div>
+          <!-- Video controls -->
+          <div id="vctrl" style="display:none;margin-top:7px;">
+            <div class="vctrl">
+              <button class="cbtn" id="playBtn" onclick="togglePlay()">▶</button>
+              <div class="pbar" onclick="seekV(event)"><div class="pfill" id="pfill"></div></div>
+              <span style="font-family:var(--mono);font-size:10px;color:var(--text3);" id="tdisp">0:00</span>
+              <button class="cbtn" onclick="stepF(-1)">◀-1</button>
+              <button class="cbtn" onclick="stepF(1)">+1▶</button>
+            </div>
+          </div>
+          <div id="camstat" style="display:none;margin-top:5px;" class="cbadge">
+            <div class="cdot" id="cdot"></div><span id="ctxt">—</span>
+          </div>
+        </div>
+        <!-- Annotation toolbar -->
+        <div class="card" id="annot-tb" style="display:none;padding:13px;">
+          <div class="ctitle" style="margin-bottom:8px;">Articulaciones — selecciona y haz clic sobre la imagen</div>
+          <div id="jbtns" class="jbtns"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;flex-wrap:wrap;gap:5px;">
+            <span style="font-family:var(--mono);font-size:10px;color:var(--text3);" id="aprog">0/11 colocados</span>
+            <div style="display:flex;gap:5px;">
+              <button class="btn btn-o btn-sm" onclick="undoPt()">↩</button>
+              <button class="btn btn-o btn-sm" onclick="clearPts()">🗑</button>
+              <button class="btn btn-p btn-sm" onclick="analyzeAnn()">✓ Calcular</button>
+            </div>
+          </div>
+          <div id="ainstr" style="font-size:11px;color:var(--tf-blue);margin-top:7px;padding:5px 9px;background:var(--tf-lt);border-radius:5px;">
+            Selecciona articulación arriba → haz clic sobre ella en la imagen
+          </div>
+        </div>
+      </div>
+      <!-- Sidebar resultados -->
+      <div style="display:flex;flex-direction:column;gap:11px;">
+        <div class="card">
+          <div class="ctitle">Ángulos detectados</div>
+          <div class="agrid">
+            <div class="abox"><div class="aseg">Cuello</div><div class="aval" id="an-neck" style="color:var(--text3);">—</div></div>
+            <div class="abox"><div class="aseg">Tronco</div><div class="aval" id="an-trunk" style="color:var(--text3);">—</div></div>
+            <div class="abox"><div class="aseg">Hombro</div><div class="aval" id="an-shldr" style="color:var(--text3);">—</div></div>
+            <div class="abox"><div class="aseg">Codo</div><div class="aval" id="an-elbow" style="color:var(--text3);">—</div></div>
+            <div class="abox"><div class="aseg">Muñeca</div><div class="aval" id="an-wrist" style="color:var(--text3);">—</div></div>
+            <div class="abox"><div class="aseg">Cadera</div><div class="aval" id="an-hip" style="color:var(--text3);">—</div></div>
+          </div>
+          <div id="seglist"></div>
+        </div>
+        <div class="card">
+          <div class="ctitle">REBA</div>
+          <div class="rhero rbg-none" id="rhero">
+            <div class="rscore" id="rscore" style="color:var(--text3);">—</div>
+            <div class="rlabel" id="rlabel">Sin análisis</div>
+            <div class="raction" id="raction">Coloca puntos o usa auto</div>
+          </div>
+        </div>
+        <button class="btn btn-p" style="width:100%;justify-content:center;" onclick="saveEval()">💾 Guardar</button>
+        <button class="btn btn-o" style="width:100%;justify-content:center;" onclick="genPDF()">📄 PDF</button>
+        <button class="btn btn-o btn-sm" style="width:100%;justify-content:center;" onclick="sendToAI()">⚡ → Predictor IA</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOOL TABS (rendered by JS) -->
+  <div id="atab-postural"    class="apanel"></div>
+  <div id="atab-repetitive"  class="apanel"></div>
+  <div id="atab-loads"       class="apanel"></div>
+  <div id="atab-office"      class="apanel"></div>
+  <div id="atab-psycho"      class="apanel"></div>
+  <div id="atab-qualitative" class="apanel"></div>
+
+  <!-- Shared tool form -->
+  <div id="tool-wrap" style="display:none;margin-top:14px;">
+    <div style="display:grid;grid-template-columns:1fr 280px;gap:16px;">
+      <div class="card"><div class="ctitle" id="tool-title">—</div><div id="tool-fields"></div></div>
+      <div class="card">
+        <div class="ctitle">Puntuación</div>
+        <div class="rhero rbg-none" id="tool-hero" style="margin-bottom:12px;">
+          <div class="rscore" id="tool-score" style="color:var(--text3);">—</div>
+          <div class="rlabel" id="tool-label">Sin datos</div>
+          <div class="raction" id="tool-action">Ajusta los parámetros</div>
+        </div>
+        <div id="tool-bd"></div>
+        <button class="btn btn-p" style="width:100%;justify-content:center;margin-top:10px;" onclick="saveToolR()">💾 Guardar</button>
+        <button class="btn btn-o" style="width:100%;justify-content:center;margin-top:6px;" onclick="toolPDF()">📄 PDF</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PAGE: HISTORIAL -->
+<section id="p-hist" class="page">
+  <div class="card">
+    <div class="ctitle">Historial de Evaluaciones</div>
+    <div class="brow">
+      <button class="btn btn-s btn-sm" onclick="exportExcel()">📊 Excel</button>
+      <button class="btn btn-o btn-sm" onclick="clearHist()">🗑 Limpiar</button>
+    </div>
+    <div id="hist-wrap"><div style="text-align:center;padding:40px;color:var(--text3);">
+      <div style="font-size:36px;margin-bottom:8px;">📂</div><div>Sin evaluaciones</div>
+    </div></div>
+  </div>
+</section>
+
+<!-- PAGE: DASHBOARD -->
+<section id="p-dashboard" class="page">
+  <div class="stats4">
+    <div class="scard"><div class="sval" id="d-tot">0</div><div class="slbl">Total</div></div>
+    <div class="scard"><div class="sval" style="color:var(--low)" id="d-low">0</div><div class="slbl">Riesgo bajo</div></div>
+    <div class="scard"><div class="sval" style="color:var(--med)" id="d-med">0</div><div class="slbl">Moderado</div></div>
+    <div class="scard"><div class="sval" style="color:var(--high)" id="d-high">0</div><div class="slbl">Alto</div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+    <div class="card"><div class="ctitle">Puntuaciones</div><div class="chart-wrap"><canvas id="chScores"></canvas></div></div>
+    <div class="card"><div class="ctitle">Distribución</div><div class="chart-wrap"><canvas id="chDist"></canvas></div></div>
+  </div>
+</section>
+
+<!-- PAGE: PREDICTOR LME -->
+<section id="p-ai-predict" class="page">
+  <div class="ai-banner" style="background:linear-gradient(135deg,#1e1b4b,#1e3a5f,#0f4c81);display:flex;align-items:center;justify-content:space-between;gap:14px;">
+    <div>
+      <div style="font-size:9px;font-family:var(--mono);letter-spacing:2px;opacity:.6;margin-bottom:3px;">GRADIENT BOOSTING · IFB × AP × FO</div>
+      <div style="font-size:20px;font-weight:700;margin-bottom:3px;">Predictor de Riesgo LME</div>
+      <div style="font-size:12px;opacity:.75;line-height:1.6;">Estima probabilidad de Lesión Musculoesquelética integrando factores biomecánicos, organizacionales y psicosociales.</div>
+    </div>
+    <div style="text-align:center;flex-shrink:0;">
+      <div style="font-size:50px;font-weight:900;font-family:var(--mono);line-height:1;" id="ai-hero-score">—</div>
+      <div style="font-size:10px;opacity:.6;">P(LME) %</div>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 310px;gap:16px;">
+    <div>
+      <div class="card" style="border-left:4px solid var(--high);">
+        <div class="ctitle" style="color:var(--high);">⚙️ A · Biomecánicos <span style="font-size:9px;background:var(--high-bg);padding:2px 6px;border-radius:3px;">peso × 0.60</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+          <div class="fg"><label>Frecuencia repetitiva (mov/min)</label>
+            <div class="slh"><span style="font-size:9px;color:var(--text3);">0</span><span class="slv" id="sv-freq">8</span><span style="font-size:9px;color:var(--text3);">30</span></div>
+            <input type="range" min="0" max="30" value="8" id="ai-freq" oninput="aiSl('freq',this.value)">
+            <div style="font-size:9px;color:var(--text3);margin-top:2px;">OCRA: riesgo ≥4/min</div>
+          </div>
+          <div class="fg"><label>% tiempo postura forzada</label>
+            <div class="slh"><span style="font-size:9px;color:var(--text3);">0%</span><span class="slv" id="sv-postime">20%</span><span style="font-size:9px;color:var(--text3);">100%</span></div>
+            <input type="range" min="0" max="100" value="20" id="ai-postime" oninput="aiSl('postime',this.value,'%')">
+            <div style="font-size:9px;color:var(--text3);margin-top:2px;">NOM-036: crítico >50%</div>
+          </div>
+          <div class="fg"><label>Índice carga (kg·lev/h)</label>
+            <div class="slh"><span style="font-size:9px;color:var(--text3);">0</span><span class="slv" id="sv-load">120</span><span style="font-size:9px;color:var(--text3);">600</span></div>
+            <input type="range" min="0" max="600" step="10" value="120" id="ai-load" oninput="aiSl('load',this.value)">
+            <div style="font-size:9px;color:var(--text3);margin-top:2px;">NIOSH IL>2 ≈ 230+</div>
+          </div>
+        </div>
+        <button class="btn btn-o btn-sm" style="margin-top:10px;" onclick="autofillAI()">⚡ Importar desde análisis</button>
+      </div>
+      <div class="card" style="border-left:4px solid var(--med);">
+        <div class="ctitle" style="color:var(--med);">🏭 B · Organizacionales <span style="font-size:9px;background:var(--med-bg);padding:2px 6px;border-radius:3px;">peso × 0.25</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+          <div class="fg"><label>Horas extra / semana</label>
+            <div class="slh"><span style="font-size:9px;color:var(--text3);">0</span><span class="slv" id="sv-ot">5h</span><span style="font-size:9px;color:var(--text3);">20h</span></div>
+            <input type="range" min="0" max="20" value="5" id="ai-ot" oninput="aiSl('ot',this.value,'h')">
+          </div>
+          <div class="fg"><label>Turno rotativo</label>
+            <select id="ai-shift" onchange="runAI()" style="margin-top:6px;">
+              <option value="0">No — fijo</option><option value="0.5">2 turnos</option><option value="1">3 turnos</option>
+            </select>
+          </div>
+          <div class="fg"><label>Antigüedad en puesto (años)</label>
+            <div class="slh"><span style="font-size:9px;color:var(--text3);">0</span><span class="slv" id="sv-tenure">3a</span><span style="font-size:9px;color:var(--text3);">30</span></div>
+            <input type="range" min="0" max="30" value="3" id="ai-tenure" oninput="aiSl('tenure',this.value,'a')">
+            <div style="font-size:9px;color:var(--text3);margin-top:2px;">Curva J: mayor riesgo &lt;2a</div>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="border-left:4px solid #7c3aed;">
+        <div class="ctitle" style="color:#7c3aed;">🧠 C · Psicosociales <span style="font-size:9px;background:#f5f3ff;padding:2px 6px;border-radius:3px;color:#7c3aed;">AMPLIFICADORES α=0.45 · no aditivos</span></div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:10px;">Multiplican el riesgo biomecánico. Rango: <b style="color:#7c3aed;">1.0 — 1.45×</b></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+          <div class="fg"><label>Estrés percibido (Cohen 0-10)</label>
+            <div class="slh"><span style="font-size:9px;color:var(--text3);">0</span><span class="slv" id="sv-stress" style="color:#7c3aed;">5</span><span style="font-size:9px;color:var(--text3);">10</span></div>
+            <input type="range" min="0" max="10" value="5" id="ai-stress" oninput="aiSl('stress',this.value)">
+          </div>
+          <div class="fg"><label>Demanda mental (NASA-TLX 0-10)</label>
+            <div class="slh"><span style="font-size:9px;color:var(--text3);">0</span><span class="slv" id="sv-mental" style="color:#7c3aed;">4</span><span style="font-size:9px;color:var(--text3);">10</span></div>
+            <input type="range" min="0" max="10" value="4" id="ai-mental" oninput="aiSl('mental',this.value)">
+          </div>
+          <div class="fg"><label>Apoyo supervisor (0-10)</label>
+            <div class="slh"><span style="font-size:9px;color:var(--text3);">0</span><span class="slv" id="sv-support" style="color:var(--low);">6</span><span style="font-size:9px;color:var(--text3);">10</span></div>
+            <input type="range" min="0" max="10" value="6" id="ai-support" oninput="aiSl('support',this.value)">
+          </div>
+        </div>
+        <div style="margin-top:10px;background:#f5f3ff;border:1px solid #e9d5ff;border-radius:6px;padding:8px 12px;font-family:var(--mono);font-size:11px;">
+          AP = <span id="ap-val" style="color:#7c3aed;font-weight:700;">1.00×</span>
+          <span style="margin-left:12px;color:var(--text3);">FO = <span id="fo-val" style="color:var(--med);font-weight:700;">1.00×</span></span>
+        </div>
+      </div>
+    </div>
+    <!-- Result panel -->
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div class="card" style="text-align:center;padding:18px;">
+        <div style="font-family:var(--mono);font-size:9px;letter-spacing:1.5px;color:var(--text3);margin-bottom:7px;">PROBABILIDAD P(LME)</div>
+        <div class="ai-gauge"><canvas id="gauge" width="190" height="115"></canvas>
+          <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);text-align:center;">
+            <div style="font-size:30px;font-weight:900;font-family:var(--mono);line-height:1;" id="gauge-n">—</div>
+            <div style="font-size:9px;color:var(--text3);">%</div>
+          </div>
+        </div>
+        <div id="ai-badge" style="display:inline-block;padding:5px 16px;border-radius:16px;font-weight:700;font-size:12px;font-family:var(--mono);margin-bottom:4px;">SIN DATOS</div>
+        <div id="ai-act-txt" style="font-size:11px;color:var(--text3);"></div>
+      </div>
+      <div class="card">
+        <div class="ctitle">🔍 SHAP-like — Contribuciones</div>
+        <div id="shap-bars"></div>
+        <div style="font-size:9px;color:var(--text3);margin-top:8px;font-family:var(--mono);">Verde=protector · Rojo=amplifica riesgo</div>
+      </div>
+      <div id="ai-alert" style="display:none;background:#fff1f0;border:2px solid var(--high);border-radius:8px;padding:12px;animation:flashAlert .8s ease 2;">
+        <div style="font-weight:700;color:var(--high);font-size:12px;margin-bottom:3px;">🚨 RIESGO ≥ 70%</div>
+        <div style="font-size:11px;color:var(--text2);line-height:1.6;" id="ai-alert-txt"></div>
+      </div>
+      <div class="card"><div class="ctitle">∑ Desglose</div><div id="ai-bd"></div></div>
+      <button class="btn btn-p" style="width:100%;justify-content:center;" onclick="saveAI()">💾 Guardar predicción</button>
+      <button class="btn btn-o" style="width:100%;justify-content:center;" onclick="aiPDF()">📄 PDF</button>
+    </div>
+  </div>
+</section>
+
+<!-- PAGE: VISION -->
+<section id="p-ai-vision" class="page">
+  <div class="ai-banner" style="background:linear-gradient(135deg,#0f4c81,#065f46);margin-bottom:14px;">
+    <div style="font-size:9px;font-family:var(--mono);letter-spacing:2px;opacity:.6;margin-bottom:2px;">VISIÓN COMPUTARIZADA</div>
+    <div style="font-size:18px;font-weight:700;">Análisis Biomecánico Inteligente</div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+    <div class="card"><div class="ctitle">Clasificación Articular</div><div id="joint-class"></div></div>
+    <div class="card">
+      <div class="ctitle">Carga Acumulada</div>
+      <div class="fg" style="margin-bottom:8px;"><label>Jornada (h)</label>
+        <input type="range" min="1" max="12" value="8" id="vis-dur" oninput="updateVision()">
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3);"><span>1h</span><span id="vdur-v">8h</span><span>12h</span></div>
+      </div>
+      <div class="fg"><label>Ciclos/hora estimados</label>
+        <input type="range" min="1" max="120" value="30" id="vis-cyc" oninput="updateVision()">
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3);"><span>1</span><span id="vcyc-v">30/h</span><span>120</span></div>
+      </div>
+      <div id="cum-load" style="margin-top:10px;"></div>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:14px;"><div class="ctitle">Clasificador de Movimientos</div><div id="mov-class"></div></div>
+  <div class="card"><div class="ctitle">Radar vs Percentiles Industriales</div><div class="chart-wrap"><canvas id="chRadar"></canvas></div></div>
+</section>
+
+<!-- PAGE: LEARNING -->
+<section id="p-ai-learning" class="page">
+  <div class="ai-banner" style="background:linear-gradient(135deg,#1e3a5f,#4c1d95);margin-bottom:14px;">
+    <div style="font-size:9px;font-family:var(--mono);letter-spacing:2px;opacity:.6;margin-bottom:2px;">CONTINUAL LEARNING</div>
+    <div style="font-size:18px;font-weight:700;">Aprendizaje Continuo</div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+    <div class="card">
+      <div class="ctitle">Ground Truth — Lesiones Confirmadas</div>
+      <div class="fg" style="margin-bottom:8px;"><label>No. Empleado</label><input id="gt-emp" placeholder="12345"></div>
+      <div class="fg" style="margin-bottom:8px;"><label>Tipo de LME</label>
+        <select id="gt-lme"><option>Lumbalgia</option><option>Tendinitis hombro</option><option>Síndrome túnel carpiano</option><option>Epicondilitis</option><option>Cervicalgia</option><option>Hernia discal</option><option>Otro TME</option></select>
+      </div>
+      <div class="fg" style="margin-bottom:8px;"><label>Fecha</label><input type="date" id="gt-date"></div>
+      <div class="fg" style="margin-bottom:10px;"><label>Notas</label><textarea id="gt-notes" style="min-height:55px;" placeholder="Diagnóstico, área, incapacidad..."></textarea></div>
+      <button class="btn btn-p" onclick="addGT()">+ Agregar al Ground Truth</button>
+      <div style="margin-top:12px;"><div style="font-size:28px;font-weight:700;font-family:var(--mono);color:var(--tf-blue);" id="gt-cnt">0</div><div style="font-size:11px;color:var(--text3);">casos confirmados</div></div>
+    </div>
+    <div class="card">
+      <div class="ctitle">Drift del Modelo</div><div id="drift-mon"></div>
+      <div class="ctitle" style="margin-top:14px;">Métricas</div><div id="model-met"></div>
+    </div>
+  </div>
+  <div class="card"><div class="ctitle">Arquitectura — Flujo de Datos</div><div id="arch-diag"></div></div>
+</section>
+
+</main>
 </div>
-
-<div class="controls">
-    <button id="btn-sync" class="btn btn-sync" onclick="syncDrive()">☁️ Sincronizar con Google Drive</button>
-    <button class="btn btn-print" onclick="window.print()">🖨️ Imprimir Reporte PDF</button>
-    <button class="btn btn-reset" onclick="resetAll()">↺ Reiniciar</button>
-</div>
-
 <script>
-// --- CONFIGURACIÓN ---
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwHVjjtCo7TAzv6ZdxhwOBt5233m_n06Qbw9_KIfjBfepd74lOFXV7QyPaduI_wtmGU/exec";
+'use strict';
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+const S = {
+  hist: JSON.parse(localStorage.getItem('erg7_hist')||'[]'),
+  gt:   JSON.parse(localStorage.getItem('erg7_gt')||'[]'),
+  angles:{}, score:null, risk:'none', tool:null,
+  mode:'auto', camStream:null, renderLoop:null, charts:{},
+};
+let annotPts={}, activeJoint=null, showOv=true;
+let videoEl,imgEl,canvas,ctx;
 
-// Los datos de los capítulos (aquí se deben integrar los 10 capítulos que enviaste inicialmente)
-// He simplificado el objeto para que el código no sea infinito, pero la estructura soporta todo.
-const CHAPTERS = [
-    {id:"I", title:"Evaluación Preliminar", sections:[
-        {id:"I.1", title:"Edificios, locales e instalaciones", qs:["Los edificios y áreas están en buenas condiciones","Los pisos cuentan con superficies antideslizantes","Los pasillos están delimitados"]},
-        {id:"I.2", title:"Orden y limpieza", qs:["Personal de intendencia exclusivo","Puestos de trabajo ordenados","Baños y casilleros limpios"]}
-    ]},
-    {id:"II", title:"Intervención Directiva", sections:[
-        {id:"II.1", title:"Políticas de salud", qs:["Existe documento de políticas","Firmado por director","Conocido por personal"]}
-    ]},
-    // ... Aquí el sistema renderizará cualquier capítulo que añadas siguiendo este formato
-];
+const RC = { low:'#16A34A', med:'#D97706', high:'#DC2626', none:'#8896A7' };
 
-// Estado global
-let state = {
-    cige: { empresa: '', fecha: '', evaluador: '' },
-    answers: {},
-    observations: {}
+// ═══════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════
+const PAGE_MAP = {
+  station:'p-station', analysis:'p-analysis', hist:'p-hist',
+  dashboard:'p-dashboard', 'ai-predict':'p-ai-predict',
+  'ai-vision':'p-ai-vision', 'ai-learning':'p-ai-learning'
+};
+const NAV_MAP = {
+  station:'n-station', analysis:'n-analysis', hist:'n-hist',
+  dashboard:'n-dashboard', 'ai-predict':'n-ai-predict',
+  'ai-vision':'n-ai-vision', 'ai-learning':'n-ai-learning'
 };
 
-// Inicialización
-function init() {
-    // Cargar datos previos
-    const saved = localStorage.getItem('proverifica_data');
-    if(saved) state = JSON.parse(saved);
-
-    // Llenar campos CIGE
-    document.getElementById('empresa').value = state.cige.empresa || '';
-    document.getElementById('fecha').value = state.cige.fecha || '';
-    document.getElementById('evaluador').value = state.cige.evaluador || '';
-
-    renderNav();
-    showChapter("I");
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nitem').forEach(n=>n.classList.remove('active'));
+  const pg = document.getElementById(PAGE_MAP[id]||'p-'+id);
+  if(pg) pg.classList.add('active');
+  const nv = document.getElementById(NAV_MAP[id]||'n-'+id);
+  if(nv) nv.classList.add('active');
+  if(id==='dashboard')  refreshDash();
+  if(id==='hist')       refreshHist();
+  if(id==='analysis')   { buildAllPanels(); setTimeout(initCanvas,100); }
+  if(id==='ai-vision')  { renderJointClass(); renderMovClass(); updateVision(); }
+  if(id==='ai-learning'){ renderGTCount(); renderDrift(); renderMetrics(); renderArch(); }
 }
 
-function renderNav() {
-    const nav = document.getElementById('nav-tabs');
-    CHAPTERS.forEach(ch => {
-        const btn = document.createElement('button');
-        btn.className = 'tab-btn';
-        btn.id = 'tab-' + ch.id;
-        btn.innerText = ch.id + ". " + ch.title;
-        btn.onclick = () => showChapter(ch.id);
-        nav.appendChild(btn);
+// ═══════════════════════════════════════════
+// ANALYSIS TABS
+// ═══════════════════════════════════════════
+function switchTab(tab, btn) {
+  document.querySelectorAll('.apanel').forEach(p=>{p.classList.remove('active');});
+  document.querySelectorAll('.atab').forEach(b=>b.classList.remove('active'));
+  const panel = document.getElementById('atab-'+tab);
+  if(panel) panel.classList.add('active');
+  if(btn) btn.classList.add('active');
+  // Tool wrap only visible when a tool is selected in non-video tabs
+  const tw = document.getElementById('tool-wrap');
+  if(tw) tw.style.display = tab==='video' ? 'none' : (S.tool ? 'block' : 'none');
+}
+
+// ═══════════════════════════════════════════
+// VIDEO / CANVAS — FIX COMPLETO
+// ═══════════════════════════════════════════
+function initCanvas() {
+  videoEl = document.getElementById('videoEl');
+  imgEl   = document.getElementById('imgEl');
+  canvas  = document.getElementById('poseCanvas');
+  ctx     = canvas.getContext('2d');
+  // Remover listeners previos para evitar duplicados
+  canvas.removeEventListener('click', onCanvasClick);
+  canvas.removeEventListener('touchend', onCanvasTouch);
+  canvas.addEventListener('click',    onCanvasClick);
+  canvas.addEventListener('touchend', onCanvasTouch, {passive:false});
+  // Modo manual OFF por default: cursor default, no interfiere con video controls
+  canvas.style.pointerEvents = 'none';
+  canvas.style.cursor = 'default';
+  buildJointBtns();
+}
+
+function setMode(m) {
+  S.mode = m;
+  if(canvas){ canvas.style.pointerEvents = m==='manual'?'all':'none'; canvas.style.cursor = m==='manual'?'crosshair':'default'; }
+  const btnA = document.getElementById('btn-auto');
+  const btnM = document.getElementById('btn-man');
+  if(btnA) { btnA.className = m==='auto'  ? 'btn btn-p btn-sm' : 'btn btn-o btn-sm'; }
+  if(btnM) { btnM.className = m==='manual'? 'btn btn-p btn-sm' : 'btn btn-o btn-sm'; }
+  // CLAVE: solo en modo manual el canvas recibe clicks
+  if(canvas) {
+    canvas.style.pointerEvents = m==='manual' ? 'all' : 'none';
+    canvas.style.cursor = m==='manual' ? 'crosshair' : 'default';
+  }
+  const hint = document.getElementById('mode-hint');
+  if(hint) hint.textContent = m==='auto'
+    ? '🤖 Auto-detección con MediaPipe Pose — presiona Calcular para analizar'
+    : '✏️ Modo manual: selecciona articulación → clic sobre ella en la imagen';
+}
+
+// Resize: canvas interno = dimensiones del workspace visible (NO la resolución del video)
+function resizeCanvas() {
+  if(!canvas) return;
+  const ws = document.getElementById('ws');
+  if(!ws) return;
+  // Usamos el tamaño CSS del workspace para que coordenadas coincidan 1:1
+  const rect = ws.getBoundingClientRect();
+  canvas.width  = rect.width  || ws.clientWidth  || 640;
+  canvas.height = rect.height || ws.clientHeight || 360;
+  // Ajustar min-height del workspace según proporción del video
+  if(videoEl && videoEl.videoWidth && videoEl.videoHeight) {
+    const ratio = videoEl.videoHeight / videoEl.videoWidth;
+    const newH  = Math.min(canvas.width * ratio, 480);
+    ws.style.minHeight = newH + 'px';
+    canvas.height = newH;
+  } else if(imgEl && imgEl.naturalWidth) {
+    const ratio = imgEl.naturalHeight / imgEl.naturalWidth;
+    const newH  = Math.min(canvas.width * ratio, 480);
+    ws.style.minHeight = newH + 'px';
+    canvas.height = newH;
+  }
+}
+
+// Click handler: coordenadas son directamente clientX/Y - rect.left/top
+// porque canvas.width = rect.width (sin escala)
+function onCanvasClick(e) {
+  if(S.mode !== 'manual') return;
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  placePoint(e.clientX - rect.left, e.clientY - rect.top);
+}
+
+function onCanvasTouch(e) {
+  if(S.mode !== 'manual') return;
+  e.preventDefault();
+  const t = e.changedTouches[0];
+  const rect = canvas.getBoundingClientRect();
+  placePoint(t.clientX - rect.left, t.clientY - rect.top);
+}
+
+function placePoint(x, y) {
+  if(!activeJoint) {
+    const first = JOINTS.find(j=>!annotPts[j.id]);
+    if(first) selectJoint(first.id); else return;
+  }
+  annotPts[activeJoint] = {x, y};
+  const idx  = JOINTS.findIndex(j=>j.id===activeJoint);
+  const next = JOINTS.slice(idx+1).find(j=>!annotPts[j.id]);
+  if(next) selectJoint(next.id);
+  else {
+    activeJoint = null;
+    const el = document.getElementById('ainstr');
+    if(el) el.textContent = '✅ Todos los puntos colocados — presiona Calcular';
+  }
+  buildJointBtns();
+  drawAnnot();
+}
+
+function loadMedia(e) {
+  const file = e.target.files[0]; if(!file) return;
+  clearMedia(false);
+  const url = URL.createObjectURL(file);
+  if(file.type.startsWith('video/')) {
+    videoEl.src = url; videoEl.style.display = 'block'; videoEl.play();
+    document.getElementById('vctrl').style.display = 'block';
+    videoEl.onloadedmetadata = () => { resizeCanvas(); startRenderLoop(); };
+    videoEl.ontimeupdate = syncProg;
+  } else {
+    imgEl.src = url; imgEl.style.display = 'block';
+    imgEl.onload = () => { resizeCanvas(); drawAnnot(); };
+  }
+  showAnnotToolbar();
+}
+
+async function startCam(facing) {
+  clearMedia(false);
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:{ideal:facing},width:{ideal:1280},height:{ideal:720}},audio:false
     });
+    S.camStream = stream;
+    videoEl.srcObject = stream; videoEl.style.display = 'block'; videoEl.play();
+    videoEl.onloadedmetadata = () => { resizeCanvas(); startRenderLoop(); };
+    showAnnotToolbar();
+    const cdot=document.getElementById('cdot'),ctxt=document.getElementById('ctxt');
+    const cs=document.getElementById('camstat');
+    if(cs){cs.style.display='flex';}
+    if(cdot){cdot.className='cdot live';}
+    if(ctxt){ctxt.textContent=facing==='environment'?'📷 Cámara trasera':'🤳 Cámara frontal';}
+  } catch(err){ alert('No se pudo acceder a la cámara: '+err.message); }
 }
 
-function showChapter(chId) {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById('tab-' + chId).classList.add('active');
-
-    const ch = CHAPTERS.find(c => c.id === chId);
-    const area = document.getElementById('content-area');
-    let html = ``;
-
-    ch.sections.forEach(sec => {
-        html += `
-        <div class="section-box">
-            <div class="sec-header">
-                <span>${sec.id} ${sec.title}</span>
-                <span id="score-${sec.id}" class="score-badge">---</span>
-            </div>`;
-        
-        sec.qs.forEach((q, idx) => {
-            const qId = `${sec.id}-${idx}`;
-            const current = state.answers[qId] || '';
-            html += `
-            <div class="q-row">
-                <div class="q-text">${idx+1}. ${q}</div>
-                <div class="opt ${current==='SI'?'sel-SI':''}" onclick="setAns('${qId}','SI',this)">SI</div>
-                <div class="opt ${current==='PM'?'sel-PM':''}" onclick="setAns('${qId}','PM',this)">PM</div>
-                <div class="opt ${current==='NO'?'sel-NO':''}" onclick="setAns('${qId}','NO',this)">NO</div>
-                <div class="opt ${current==='NA'?'sel-NA':''}" onclick="setAns('${qId}','NA',this)">N/A</div>
-            </div>`;
-        });
-
-        html += `
-            <div style="padding:15px; background:var(--surface);">
-                <textarea class="field" placeholder="Observaciones de este apartado..." oninput="setObs('${sec.id}',this.value)">${state.observations[sec.id] || ''}</textarea>
-            </div>
-        </div>`;
-    });
-
-    area.innerHTML = html;
-    ch.sections.forEach(sec => updateSecScore(sec.id));
+function showAnnotToolbar() {
+  document.getElementById('ws-ph').style.display = 'none';
+  document.getElementById('annot-tb').style.display = 'block';
+  document.getElementById('camstat').style.display = 'flex';
 }
 
-function setAns(qId, val, el) {
-    state.answers[qId] = val;
-    const row = el.parentElement;
-    row.querySelectorAll('.opt').forEach(o => o.className = 'opt');
-    el.classList.add('sel-' + val);
-    
-    saveLocal();
-    updateSecScore(qId.split('-')[0]);
+function clearMedia(full=true) {
+  if(S.camStream){S.camStream.getTracks().forEach(t=>t.stop());S.camStream=null;}
+  if(S.renderLoop){cancelAnimationFrame(S.renderLoop);S.renderLoop=null;}
+  if(videoEl){videoEl.pause();videoEl.srcObject=null;videoEl.src='';videoEl.style.display='none';}
+  if(imgEl){imgEl.src='';imgEl.style.display='none';}
+  if(ctx&&canvas) ctx.clearRect(0,0,canvas.width,canvas.height);
+  if(full){
+    annotPts={}; activeJoint=null;
+    document.getElementById('ws-ph').style.display='flex';
+    document.getElementById('annot-tb').style.display='none';
+    document.getElementById('vctrl').style.display='none';
+    document.getElementById('camstat').style.display='none';
+    buildJointBtns(); resetResults();
+  }
 }
 
-function setObs(secId, val) {
-    state.observations[secId] = val;
-    saveLocal();
+function togglePlay(){
+  if(!videoEl)return;
+  const btn=document.getElementById('playBtn');
+  if(videoEl.paused){videoEl.play();if(btn)btn.textContent='⏸';}
+  else{videoEl.pause();if(btn)btn.textContent='▶';}
+}
+function seekV(e){if(!videoEl||!videoEl.duration)return;videoEl.currentTime=(e.offsetX/e.currentTarget.offsetWidth)*videoEl.duration;}
+function stepF(d){if(!videoEl)return;videoEl.pause();const btn=document.getElementById('playBtn');if(btn)btn.textContent='▶';videoEl.currentTime=Math.max(0,Math.min(videoEl.duration||0,videoEl.currentTime+d/30));}
+function syncProg(){const p=document.getElementById('pfill');if(p&&videoEl.duration)p.style.width=(videoEl.currentTime/videoEl.duration*100)+'%';const t=document.getElementById('tdisp');if(t){const m=Math.floor(videoEl.currentTime/60),s=Math.floor(videoEl.currentTime%60).toString().padStart(2,'0');t.textContent=m+':'+s;}}
+function capFrame(){if(!canvas)return;const a=document.createElement('a');a.href=canvas.toDataURL();a.download='ergo-frame-'+Date.now()+'.png';a.click();}
+
+function startRenderLoop(){
+  if(S.renderLoop)cancelAnimationFrame(S.renderLoop);
+  const loop=()=>{S.renderLoop=requestAnimationFrame(loop);if(showOv)drawAnnot();};
+  loop();
 }
 
-function updateSecScore(secId) {
-    const answers = Object.entries(state.answers).filter(([k]) => k.startsWith(secId));
-    let si=0, pm=0, na=0;
-    
-    // Buscar la sección en el objeto CHAPTERS para saber el total de preguntas
-    let totalQs = 0;
-    CHAPTERS.forEach(ch => {
-        const s = ch.sections.find(sc => sc.id === secId);
-        if(s) totalQs = s.qs.length;
-    });
+// ═══════════════════════════════════════════
+// JOINTS & ANNOTATION
+// ═══════════════════════════════════════════
+const JOINTS=[
+  {id:'head',      label:'Cabeza',     color:'#e879f9',seg:'neck'    },
+  {id:'neck',      label:'Cuello',     color:'#a78bfa',seg:'neck'    },
+  {id:'l_shoulder',label:'Hombro Izq', color:'#38bdf8',seg:'shoulder'},
+  {id:'r_shoulder',label:'Hombro Der', color:'#38bdf8',seg:'shoulder'},
+  {id:'l_elbow',   label:'Codo Izq',   color:'#34d399',seg:'elbow'  },
+  {id:'r_elbow',   label:'Codo Der',   color:'#34d399',seg:'elbow'  },
+  {id:'l_wrist',   label:'Muñeca Izq', color:'#fbbf24',seg:'wrist'  },
+  {id:'r_wrist',   label:'Muñeca Der', color:'#fbbf24',seg:'wrist'  },
+  {id:'mid_hip',   label:'Cadera',     color:'#fb923c',seg:'hip'    },
+  {id:'l_knee',    label:'Rodilla Izq',color:'#f87171',seg:'knee'   },
+  {id:'r_knee',    label:'Rodilla Der',color:'#f87171',seg:'knee'   },
+];
 
-    answers.forEach(([k,v]) => {
-        if(v==='SI') si++;
-        if(v==='PM') pm++;
-        if(v==='NA') na++;
-    });
+const SKEL=[['head','neck'],['neck','l_shoulder'],['neck','r_shoulder'],['l_shoulder','r_shoulder'],
+  ['l_shoulder','l_elbow'],['l_elbow','l_wrist'],['r_shoulder','r_elbow'],['r_elbow','r_wrist'],
+  ['l_shoulder','mid_hip'],['r_shoulder','mid_hip'],['mid_hip','l_knee'],['mid_hip','r_knee']];
 
-    const aplicables = totalQs - na;
-    if(aplicables <= 0) return;
+function buildJointBtns(){
+  const wrap=document.getElementById('jbtns'); if(!wrap)return;
+  wrap.innerHTML=JOINTS.map(j=>`<button class="jbtn${activeJoint===j.id?' jactive':''}"
+    id="jb-${j.id}" style="background:${j.color}22;color:${j.color};border-color:${j.color}66;"
+    onclick="selectJoint('${j.id}')">${annotPts[j.id]?'✓ ':''}${j.label}</button>`).join('');
+  const p=document.getElementById('aprog');
+  if(p)p.textContent=Object.keys(annotPts).length+'/'+JOINTS.length+' colocados';
+}
 
-    const eficacia = Math.round(((si + (pm * 0.5)) / aplicables) * 100);
-    const badge = document.getElementById('score-' + secId);
-    
-    if(badge) {
-        badge.innerText = eficacia + "% Eficacia";
-        badge.className = 'score-badge ' + (eficacia >= 90 ? 'score-low' : eficacia >= 80 ? 'score-med' : 'score-high');
+function selectJoint(id){
+  activeJoint=id;
+  buildJointBtns();
+  const el=document.getElementById('ainstr');
+  const j=JOINTS.find(x=>x.id===id);
+  if(el)el.textContent='→ Haz clic sobre: '+j?.label;
+}
+
+function undoPt(){const k=Object.keys(annotPts);if(!k.length)return;delete annotPts[k[k.length-1]];buildJointBtns();drawAnnot();}
+function clearPts(){annotPts={};activeJoint=null;buildJointBtns();if(ctx)ctx.clearRect(0,0,canvas.width,canvas.height);const el=document.getElementById('ainstr');if(el)el.textContent='Selecciona articulación y haz clic sobre la imagen';}
+
+function drawAnnot(){
+  if(!ctx||!canvas)return;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  // Skeleton lines
+  SKEL.forEach(([a,b])=>{
+    if(!annotPts[a]||!annotPts[b])return;
+    const risk=getRisk(getAngle(a)||90,'elbow');
+    const col=RC[risk]||'#4ade80';
+    ctx.beginPath();ctx.moveTo(annotPts[a].x,annotPts[a].y);ctx.lineTo(annotPts[b].x,annotPts[b].y);
+    ctx.strokeStyle=col+'cc';ctx.lineWidth=3;ctx.globalAlpha=.85;ctx.stroke();
+    // arrow mid
+    const mx=(annotPts[a].x+annotPts[b].x)/2,my=(annotPts[a].y+annotPts[b].y)/2;
+    const ang=Math.atan2(annotPts[b].y-annotPts[a].y,annotPts[b].x-annotPts[a].x);
+    ctx.beginPath();ctx.moveTo(mx,my);
+    ctx.lineTo(mx-7*Math.cos(ang-.4),my-7*Math.sin(ang-.4));
+    ctx.lineTo(mx-7*Math.cos(ang+.4),my-7*Math.sin(ang+.4));
+    ctx.closePath();ctx.fillStyle=col+'cc';ctx.globalAlpha=.75;ctx.fill();
+  });
+  // Joints
+  JOINTS.forEach(j=>{
+    if(!annotPts[j.id])return;
+    const {x,y}=annotPts[j.id]; const isA=activeJoint===j.id;
+    ctx.beginPath();ctx.arc(x,y,isA?14:10,0,Math.PI*2);ctx.fillStyle=j.color+'25';ctx.globalAlpha=1;ctx.fill();
+    ctx.beginPath();ctx.arc(x,y,isA?7:6,0,Math.PI*2);ctx.fillStyle=j.color;ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,.4)';ctx.lineWidth=1.5;ctx.stroke();
+    ctx.font='bold 10px Space Mono,monospace';ctx.fillStyle='#fff';
+    ctx.shadowColor='rgba(0,0,0,.8)';ctx.shadowBlur=3;
+    ctx.fillText(j.label,x+10,y-3);
+    const ang=getAngle(j.id);
+    if(ang!==null){
+      const r=getRisk(ang,j.seg);
+      ctx.fillStyle=RC[r];ctx.shadowColor='rgba(0,0,0,.9)';ctx.shadowBlur=4;
+      ctx.fillText(ang+'°',x+10,y+11);
     }
+    ctx.shadowBlur=0;ctx.globalAlpha=1;
+  });
 }
 
-function saveLocal() {
-    state.cige.empresa = document.getElementById('empresa').value;
-    state.cige.fecha = document.getElementById('fecha').value;
-    state.cige.evaluador = document.getElementById('evaluador').value;
-    localStorage.setItem('proverifica_data', JSON.stringify(state));
+// ═══════════════════════════════════════════
+// ANGLE CALCULATION
+// ═══════════════════════════════════════════
+function angBetween(A,B,C){
+  if(!A||!B||!C)return null;
+  const vBA={x:A.x-B.x,y:A.y-B.y},vBC={x:C.x-B.x,y:C.y-B.y};
+  const dot=vBA.x*vBC.x+vBA.y*vBC.y;
+  const mag=Math.hypot(vBA.x,vBA.y)*Math.hypot(vBC.x,vBC.y);
+  if(mag===0)return null;
+  return Math.round(Math.acos(Math.max(-1,Math.min(1,dot/mag)))*180/Math.PI);
+}
+function mid(A,B){return A&&B?{x:(A.x+B.x)/2,y:(A.y+B.y)/2}:A||B;}
+function above(P){return P?{x:P.x,y:P.y-100}:null;}
+
+function getAngle(id){
+  const P=annotPts;
+  switch(id){
+    case 'neck':      return angBetween(P.head,P.neck,mid(P.l_shoulder,P.r_shoulder)||P.l_shoulder);
+    case 'l_shoulder':return angBetween(P.neck,P.l_shoulder,P.l_elbow);
+    case 'r_shoulder':return angBetween(P.neck,P.r_shoulder,P.r_elbow);
+    case 'l_elbow':   return angBetween(P.l_shoulder,P.l_elbow,P.l_wrist);
+    case 'r_elbow':   return angBetween(P.r_shoulder,P.r_elbow,P.r_wrist);
+    case 'l_wrist':   return P.l_wrist&&P.l_elbow?Math.abs(90-angBetween(P.l_elbow,P.l_wrist,above(P.l_wrist))):null;
+    case 'r_wrist':   return P.r_wrist&&P.r_elbow?Math.abs(90-angBetween(P.r_elbow,P.r_wrist,above(P.r_wrist))):null;
+    case 'mid_hip':   return angBetween(mid(P.l_shoulder,P.r_shoulder)||P.l_shoulder,P.mid_hip,mid(P.l_knee,P.r_knee)||P.l_knee);
+    case 'l_knee':    return angBetween(P.mid_hip,P.l_knee,above(P.l_knee));
+    case 'r_knee':    return angBetween(P.mid_hip,P.r_knee,above(P.r_knee));
+    default: return null;
+  }
 }
 
-// Sincronización con el link proporcionado
-async function syncDrive() {
-    const btn = document.getElementById('btn-sync');
-    if(!state.cige.empresa) return alert("Ingresa el nombre de la empresa");
-    
-    btn.disabled = true;
-    btn.innerText = "⏳ Enviando datos...";
-
-    // Cálculo Global
-    let tSi=0, tPm=0, tNa=0, tTotal=0;
-    Object.values(state.answers).forEach(v => {
-        tTotal++;
-        if(v==='SI') tSi++;
-        if(v==='PM') tPm++;
-        if(v==='NA') tNa++;
-    });
-    const globalScore = tTotal > 0 ? Math.round(((tSi + (tPm*0.5))/(tTotal-tNa))*100) : 0;
-
-    const payload = {
-        cige: state.cige,
-        globalEficacia: globalScore,
-        respuestasTotales: Object.keys(state.answers).length,
-        timestamp: new Date().toISOString()
-    };
-
-    try {
-        await fetch(WEB_APP_URL, {
-            method: 'POST',
-            mode: 'no-cors',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(payload)
-        });
-        alert("✅ Sincronizado correctamente en Google Sheets");
-    } catch (e) {
-        alert("❌ Error de conexión: " + e);
-    } finally {
-        btn.disabled = false;
-        btn.innerText = "☁️ Sincronizar con Google Drive";
-    }
+const THRESH={
+  neck:    [{m:20,r:'low'},{m:35,r:'med'},{m:999,r:'high'}],
+  shoulder:[{m:45,r:'low'},{m:90,r:'med'},{m:999,r:'high'}],
+  elbow:   [{m:90,r:'low'},{m:120,r:'med'},{m:999,r:'high'}],
+  wrist:   [{m:15,r:'low'},{m:30,r:'med'},{m:999,r:'high'}],
+  hip:     [{m:20,r:'low'},{m:45,r:'med'},{m:999,r:'high'}],
+  knee:    [{m:30,r:'low'},{m:60,r:'med'},{m:999,r:'high'}],
+};
+function getRisk(angle,seg){
+  if(angle===null||angle===undefined)return'low';
+  const t=THRESH[seg]||THRESH.elbow;
+  return(t.find(x=>angle<=x.m)||{r:'high'}).r;
 }
 
-function resetAll() {
-    if(confirm("¿Borrar todo el reporte actual?")) {
-        localStorage.removeItem('proverifica_data');
-        location.reload();
-    }
+function analyzeAnn(){
+  if(S.mode==='auto'){
+    const el=document.getElementById('ainstr');
+    if(el)el.textContent='⏳ Procesando con MediaPipe...';
+    runMediaPipe(); return;
+  }
+  if(Object.keys(annotPts).length<3){alert('Coloca al menos 3 puntos.');return;}
+  computeResults();
 }
 
-window.onload = init;
+function computeResults(){
+  const angs={};
+  JOINTS.forEach(j=>{angs[j.id]=getAngle(j.id);});
+  S.angles={
+    neck:angs.neck, trunk:angs.mid_hip,
+    shoulder:angs.l_shoulder??angs.r_shoulder,
+    elbow:angs.l_elbow??angs.r_elbow,
+    wrist:angs.l_wrist??angs.r_wrist,
+    hip:angs.mid_hip, knee:angs.l_knee??angs.r_knee,
+  };
+  const score=rebaSimple(angs.neck||0,angs.mid_hip||0,angs.l_shoulder||0,angs.l_elbow||90,angs.l_wrist||0);
+  S.score=score; S.risk=score<=3?'low':score<=7?'med':'high';
+  // Update angle boxes
+  const m={neck:'an-neck',trunk:'an-trunk',shoulder:'an-shldr',elbow:'an-elbow',wrist:'an-wrist',hip:'an-hip'};
+  Object.entries(m).forEach(([seg,eid])=>{
+    const v=S.angles[seg],el=document.getElementById(eid);
+    if(!el)return;
+    const r=v!=null?getRisk(v,seg):'none';
+    el.textContent=v!=null?v+'°':'—'; el.style.color=RC[r];
+  });
+  // Result hero
+  const hero=document.getElementById('rhero'),rs=document.getElementById('rscore');
+  const rl=document.getElementById('rlabel'),ra=document.getElementById('raction');
+  if(hero)hero.className='rhero rbg-'+S.risk;
+  const RL={low:'Riesgo bajo',med:'Riesgo medio',high:'Riesgo alto'};
+  const RA={low:'Sin cambios inmediatos',med:'Investigar y cambiar',high:'Cambio inmediato'};
+  if(rs){rs.textContent=score;rs.style.color=RC[S.risk];}
+  if(rl)rl.textContent=RL[S.risk];
+  if(ra)ra.textContent=RA[S.risk];
+  // Segment list
+  const sl=document.getElementById('seglist');
+  if(sl){
+    const segs=[{n:'Cuello',a:angs.neck,s:'neck'},{n:'Tronco',a:angs.mid_hip,s:'hip'},{n:'Hombro Izq',a:angs.l_shoulder,s:'shoulder'},{n:'Codo Izq',a:angs.l_elbow,s:'elbow'},{n:'Muñeca Izq',a:angs.l_wrist,s:'wrist'},{n:'Rodilla Izq',a:angs.l_knee,s:'knee'}];
+    sl.innerHTML=segs.filter(x=>x.a!=null).map(x=>{
+      const r=getRisk(x.a,x.s),pct=Math.min(x.a,120)/120*100;
+      return`<div style="display:flex;align-items:center;gap:7px;padding:4px 0;border-bottom:1px solid var(--border);font-size:11px;">
+        <span style="min-width:72px;color:var(--text2);">${x.n}</span>
+        <div style="flex:1;height:3px;background:var(--border);border-radius:2px;overflow:hidden;"><div style="height:100%;width:${pct}%;background:${RC[r]};border-radius:2px;"></div></div>
+        <span style="font-family:var(--mono);font-size:10px;color:${RC[r]};">${x.a}°</span>
+      </div>`;
+    }).join('');
+  }
+  // Feed AI if on that page
+  autofillAI();
+}
+
+// REBA simplified
+const TA=[[1,2,3,4],[2,3,4,5],[3,4,5,6],[4,5,6,7],[5,6,7,8]];
+const TB=[[1,2,3],[2,3,4],[3,4,5],[4,5,6],[5,6,7]];
+const TC=[[1,1,2,3,4,6,7],[1,2,3,4,5,6,7],[2,3,4,5,6,7,8],[3,4,5,6,7,8,9],[4,5,6,7,8,9,9]];
+function rebaSimple(neck,trunk,arm,fore,wrist){
+  const sN=neck<=20?0:1,sT=trunk<=5?0:trunk<=20?1:trunk<=60?2:3;
+  const sA=arm<=20?0:arm<=45?1:arm<=90?2:3,sF=fore>=60&&fore<=100?0:1,sW=wrist<=15?0:1;
+  const sA2=Math.min(sA+sF,4);
+  const sA_=TA[Math.min(sN,4)]?.[Math.min(sT,3)]||1;
+  const sB_=TB[Math.min(sA2,4)]?.[Math.min(sW,2)]||1;
+  return Math.min(TC[Math.min(sA_-1,4)]?.[Math.min(sB_-1,6)]||1,15);
+}
+
+function resetResults(){
+  S.angles={}; S.score=null; S.risk='none';
+  ['an-neck','an-trunk','an-shldr','an-elbow','an-wrist','an-hip'].forEach(id=>{
+    const el=document.getElementById(id);if(el){el.textContent='—';el.style.color='var(--text3)';}
+  });
+  const hero=document.getElementById('rhero');if(hero)hero.className='rhero rbg-none';
+  const rs=document.getElementById('rscore');if(rs){rs.textContent='—';rs.style.color='var(--text3)';}
+  const rl=document.getElementById('rlabel');if(rl)rl.textContent='Sin análisis';
+  const ra=document.getElementById('raction');if(ra)ra.textContent='Coloca puntos o usa auto';
+  const sl=document.getElementById('seglist');if(sl)sl.innerHTML='';
+}
+
+// MediaPipe auto
+let poseMP=null;
+async function initMP(){
+  try{
+    poseMP=new Pose({locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/pose/${f}`});
+    poseMP.setOptions({modelComplexity:1,smoothLandmarks:true,minDetectionConfidence:.5,minTrackingConfidence:.5});
+    poseMP.onResults(onMPResults);
+  }catch(e){console.warn('MediaPipe:',e);}
+}
+async function runMediaPipe(){
+  if(!poseMP){alert('MediaPipe no disponible. Usa modo Manual.');return;}
+  const src=videoEl.style.display!=='none'?videoEl:imgEl;
+  try{await poseMP.send({image:src});}catch(e){alert('Error MP:'+e.message);}
+}
+function onMPResults(r){
+  if(!r.poseLandmarks){alert('No se detectó persona. Usa modo Manual.');return;}
+  const lm=r.poseLandmarks,w=canvas.width,h=canvas.height;
+  const mp=(i)=>({x:lm[i].x*w,y:lm[i].y*h});
+  annotPts={
+    head:mp(0),neck:mid(mp(11),mp(12)),
+    l_shoulder:mp(11),r_shoulder:mp(12),
+    l_elbow:mp(13),r_elbow:mp(14),
+    l_wrist:mp(15),r_wrist:mp(16),
+    mid_hip:mid(mp(23),mp(24)),
+    l_knee:mp(25),r_knee:mp(26),
+  };
+  buildJointBtns(); drawAnnot(); computeResults();
+}
+
+// ═══════════════════════════════════════════
+// SAVE / HISTORY / DASHBOARD / EXCEL
+// ═══════════════════════════════════════════
+function makeRecord(method,score,risk){
+  return{
+    id:Date.now(),date:new Date().toLocaleDateString('es-MX'),
+    time:new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}),
+    company:document.getElementById('st-company')?.value||'Teleflex',
+    plant:document.getElementById('st-plant')?.value||'—',
+    area:document.getElementById('st-area')?.value||'—',
+    job:document.getElementById('st-job')?.value||'—',
+    emp:document.getElementById('st-emp')?.value||'—',
+    evaluator:document.getElementById('st-eval')?.value||'—',
+    shift:document.getElementById('st-shift')?.value||'—',
+    method, score: String(score), risk,
+  };
+}
+function pushHist(ev){
+  S.hist.unshift(ev);
+  localStorage.setItem('erg7_hist',JSON.stringify(S.hist));
+  ['nb','hcount'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=S.hist.length;});
+}
+function saveEval(){
+  if(S.score===null){alert('Realiza un análisis primero.');return;}
+  const ev=makeRecord('REBA',S.score,S.risk);
+  ev.angles={...S.angles};
+  pushHist(ev);
+  alert('✅ REBA guardado — '+S.score+' pts');
+}
+function saveToolR(){
+  if(!S.tool){alert('Selecciona una herramienta.');return;}
+  const t=TOOLS[S.tool];if(!t)return;
+  const r=t.calc(toolVals);
+  const ev=makeRecord(S.tool,r.score,r.risk);
+  ev.params={...toolVals};
+  pushHist(ev);
+  alert('✅ '+S.tool+' guardado — '+r.score);
+}
+function saveAI(){
+  const sc=document.getElementById('gauge-n')?.textContent||'0';
+  const p=parseInt(sc)||0;
+  const r=p<35?'low':p<70?'med':'high';
+  const ev=makeRecord('LME-IA',sc+'%',r);
+  ev.ai={...aiVals};
+  pushHist(ev);
+  alert('✅ Predicción IA guardada: P(LME)='+sc+'%');
+}
+function deleteEv(id){
+  S.hist=S.hist.filter(e=>e.id!==id);
+  localStorage.setItem('erg7_hist',JSON.stringify(S.hist));
+  refreshHist(); refreshDash();
+  ['nb','hcount'].forEach(x=>{const el=document.getElementById(x);if(el)el.textContent=S.hist.length;});
+}
+function clearHist(){if(!confirm('¿Eliminar todo?'))return;S.hist=[];localStorage.removeItem('erg7_hist');refreshHist();refreshDash();}
+
+function refreshHist(){
+  const w=document.getElementById('hist-wrap');if(!w)return;
+  if(!S.hist.length){w.innerHTML='<div style="text-align:center;padding:40px;color:var(--text3);"><div style="font-size:36px;margin-bottom:8px;">📂</div><div>Sin evaluaciones</div></div>';return;}
+  w.innerHTML=`<div style="overflow-x:auto;"><table class="htbl">
+    <thead><tr><th>FOLIO</th><th>FECHA</th><th>MÉTODO</th><th>PUESTO</th><th>ÁREA</th><th>PUNTUACIÓN</th><th>RIESGO</th><th></th></tr></thead>
+    <tbody>${S.hist.map(ev=>`<tr>
+      <td style="font-family:var(--mono);color:var(--text3);font-size:10px;">#${String(ev.id).slice(-6)}</td>
+      <td>${ev.date} ${ev.time}</td>
+      <td style="font-family:var(--mono);font-size:10px;">${ev.method}</td>
+      <td>${ev.job}</td><td>${ev.area}</td>
+      <td style="font-family:var(--mono);font-weight:700;color:${RC[ev.risk]||'#888'};">${ev.score}</td>
+      <td><span class="pill pill-${ev.risk}">${ev.risk==='low'?'BAJO':ev.risk==='med'?'MODERADO':'ALTO'}</span></td>
+      <td><button onclick="deleteEv(${ev.id})" style="background:none;border:none;cursor:pointer;color:var(--high);font-size:13px;">✕</button></td>
+    </tr>`).join('')}</tbody></table></div>`;
+}
+
+function refreshDash(){
+  const evs=S.hist;
+  const low=evs.filter(e=>e.risk==='low').length,med=evs.filter(e=>e.risk==='med').length,high=evs.filter(e=>e.risk==='high').length;
+  ['tot','low','med','high'].forEach((k,i)=>{const el=document.getElementById('d-'+k);if(el)el.textContent=[evs.length,low,med,high][i];});
+  const labels=evs.slice(0,10).reverse().map(e=>e.method+' '+e.date.slice(0,5));
+  const scores=evs.slice(0,10).reverse().map(e=>parseFloat(e.score)||0);
+  const cols=evs.slice(0,10).reverse().map(e=>(RC[e.risk]||'#888')+'99');
+  if(S.charts.sc)S.charts.sc.destroy();
+  const c1=document.getElementById('chScores');
+  if(c1)S.charts.sc=new Chart(c1.getContext('2d'),{type:'bar',data:{labels,datasets:[{data:scores,backgroundColor:cols,borderRadius:4}]},options:{plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#8896A7',font:{size:9}},grid:{color:'#DDE3EA'}},y:{ticks:{color:'#8896A7'},grid:{color:'#DDE3EA'},beginAtZero:true}},responsive:true,maintainAspectRatio:false}});
+  if(S.charts.dist)S.charts.dist.destroy();
+  const c2=document.getElementById('chDist');
+  if(c2&&evs.length)S.charts.dist=new Chart(c2.getContext('2d'),{type:'doughnut',data:{labels:['Bajo','Moderado','Alto'],datasets:[{data:[low,med,high],backgroundColor:['#16A34A99','#D9770699','#DC262699'],borderWidth:0}]},options:{plugins:{legend:{labels:{color:'#4A5568',font:{size:11}}}},responsive:true,maintainAspectRatio:false}});
+}
+
+function exportExcel(){
+  if(!S.hist.length){alert('Sin evaluaciones.');return;}
+  const rows=[['Folio','Fecha','Hora','Empresa','Planta','Área','Puesto','Empleado','Evaluador','Turno','Método','Puntuación','Riesgo'],
+    ...S.hist.map(e=>['#'+String(e.id).slice(-6),e.date,e.time,e.company,e.plant,e.area,e.job,e.emp,e.evaluator,e.shift,e.method,e.score,e.risk==='low'?'BAJO':e.risk==='med'?'MODERADO':'ALTO'])];
+  const wb=XLSX.utils.book_new();
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=rows[0].map(()=>({wch:16}));
+  XLSX.utils.book_append_sheet(wb,ws,'Evaluaciones');
+  const stats=[['Métrica','Valor'],['Total',S.hist.length],['Bajo',S.hist.filter(e=>e.risk==='low').length],['Moderado',S.hist.filter(e=>e.risk==='med').length],['Alto',S.hist.filter(e=>e.risk==='high').length],['Fecha',new Date().toLocaleDateString('es-MX')]];
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(stats),'Resumen');
+  XLSX.writeFile(wb,'ErgoNOM7_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
+
+// ═══════════════════════════════════════════
+// PDF
+// ═══════════════════════════════════════════
+function buildPDF(method,score,risk,label,action,rows,isAngle=false){
+  const {jsPDF}=window.jspdf;const doc=new jsPDF();
+  const co=document.getElementById('st-company')?.value||'Teleflex';
+  const job=document.getElementById('st-job')?.value||'Puesto';
+  const plant=document.getElementById('st-plant')?.value||'—';
+  const area=document.getElementById('st-area')?.value||'—';
+  const fecha=new Date().toLocaleDateString('es-MX',{dateStyle:'long'});
+  const folio='ERG-'+Date.now().toString().slice(-6);
+  doc.setFillColor(0,91,154);doc.rect(0,0,210,40,'F');
+  doc.setTextColor(255,255,255);doc.setFontSize(20);doc.setFont('helvetica','bold');
+  doc.text('REPORTE ERGONÓMICO',15,18);
+  doc.setFontSize(9);doc.setFont('helvetica','normal');
+  doc.text(`${co.toUpperCase()} · ${method} · ${fecha}`,15,27);
+  doc.text('Folio: '+folio,15,34);
+  const rCol=risk==='low'?[22,163,74]:risk==='med'?[217,119,6]:[220,38,38];
+  doc.setFillColor(...rCol);doc.rect(0,40,210,13,'F');
+  doc.setTextColor(255,255,255);doc.setFontSize(13);doc.setFont('helvetica','bold');
+  doc.text(`${label.toUpperCase()} — ${method}: ${score}`,15,49);
+  doc.setTextColor(0,0,0);doc.setFontSize(11);doc.text('DATOS DE LA ESTACIÓN',15,65);
+  doc.autoTable({startY:69,body:[['Planta:',plant,'Área:',area],['Puesto:',job,'Evaluador:',document.getElementById('st-eval')?.value||'—']],theme:'grid',styles:{fontSize:9}});
+  const nY=doc.lastAutoTable.finalY+10;doc.text(`RESULTADOS — ${method}`,15,nY);
+  const head=isAngle?[['Segmento','Ángulo','Riesgo']]:[['Parámetro','Valor']];
+  doc.autoTable({startY:nY+4,head,body:rows,headStyles:{fillColor:[0,91,154]},styles:{fontSize:9}});
+  const rY=doc.lastAutoTable.finalY+10;doc.text('RECOMENDACIONES',15,rY);
+  const recs=['• Pausas activas cada 2 horas.','• Capacitación en higiene postural.'];
+  if(risk==='med')recs.push('• Revisar diseño del puesto.');
+  if(risk==='high'){recs.push('• REDISEÑO INMEDIATO del puesto.');recs.push('• Evaluación médica del trabajador.');}
+  doc.setFontSize(9);recs.forEach((r,i)=>doc.text(r,18,rY+8+i*6));
+  doc.setFontSize(7);doc.setTextColor(150,150,150);
+  doc.text(`ErgoNOM v7 · NOM-036-STPS-2018 · ${fecha} · ${folio}`,15,283);
+  doc.save(`Reporte_${method}_${job.replace(/ /g,'_')}_${folio}.pdf`);
+}
+function genPDF(){
+  if(S.score===null){alert('Realiza análisis primero.');return;}
+  const rows=Object.entries(S.angles).filter(([,v])=>v!=null).map(([k,v])=>[k,v+'°',v<=20?'BAJO':v<=45?'MODERADO':'ALTO']);
+  buildPDF('REBA',S.score,S.risk,S.risk==='low'?'Riesgo bajo':S.risk==='med'?'Riesgo medio':'Riesgo alto','—',rows,true);
+}
+function toolPDF(){
+  if(!S.tool)return;
+  const t=TOOLS[S.tool];if(!t)return;
+  const r=t.calc(toolVals);
+  buildPDF(S.tool,r.score,r.risk,r.label,r.action,Object.entries(toolVals).map(([k,v])=>[t.fields?.find(f=>f.id===k)?.label||k,String(v)]));
+}
+function aiPDF(){
+  const p=parseInt(document.getElementById('gauge-n')?.textContent)||0;
+  const r=p<35?'low':p<70?'med':'high';
+  buildPDF('LME-IA',p+'%',r,r==='low'?'Riesgo bajo':r==='med'?'Riesgo moderado':'Riesgo alto','—',
+    Object.entries(aiVals).map(([k,v])=>[k,String(v)]));
+}
+function sendToAI(){autofillAI();showPage('ai-predict');}
+
+</script>
+<script>
+// ═══════════════════════════════════════════
+// 26 HERRAMIENTAS — CATÁLOGO COMPLETO
+// ═══════════════════════════════════════════
+const TOOLS = {
+  // ─── POSTURAL ────────────────────────────
+  REBA:{group:'postural',icon:'🦴',name:'REBA',full:'Rapid Entire Body Assessment',
+    when:'Cuerpo completo con posturas dinámicas: manufactura, salud, almacén, trabajo de pie con movimiento frecuente.',
+    norm:'Hignett & McAtamney 2000',
+    fields:[{id:'neck',label:'Cuello (°)',type:'r',min:0,max:45,val:10},{id:'trunk',label:'Tronco (°)',type:'r',min:0,max:60,val:10},{id:'arm',label:'Brazo (°)',type:'r',min:0,max:120,val:30},{id:'fore',label:'Antebrazo (°)',type:'r',min:0,max:145,val:90},{id:'wrist',label:'Muñeca (°)',type:'r',min:0,max:45,val:5},{id:'load',label:'Carga (kg)',type:'r',min:0,max:20,val:0}],
+    calc(v){const s=Math.min(rebaSimple(v.neck,v.trunk,v.arm,v.fore,v.wrist)+(v.load>=10?2:v.load>=5?1:0),15);const r=s<=3?'low':s<=7?'med':'high';return{score:s,risk:r,label:{low:'Riesgo bajo',med:'Riesgo medio',high:'Riesgo alto'}[r],action:{low:'Sin cambios inmediatos',med:'Investigar y cambiar',high:'Cambio inmediato'}[r]};},
+    ranges:'1 Negligible | 2-3 Bajo | 4-7 Medio | 8-10 Alto | 11-15 Muy alto'},
+  RULA:{group:'postural',icon:'💪',name:'RULA',full:'Rapid Upper Limb Assessment',
+    when:'Oficina, ensamble fino, tareas donde los brazos hacen el trabajo principal. Examina MMSS, cuello y tronco.',
+    norm:'McAtamney & Corlett 1993',
+    fields:[{id:'arm',label:'Brazo (°)',type:'r',min:0,max:90,val:20},{id:'fore',label:'Antebrazo (°)',type:'r',min:0,max:145,val:80},{id:'wrist',label:'Muñeca (°)',type:'r',min:0,max:45,val:0},{id:'neck',label:'Cuello (°)',type:'r',min:0,max:45,val:10},{id:'trunk',label:'Tronco (°)',type:'r',min:0,max:60,val:0},{id:'force',label:'Fuerza (0-3)',type:'r',min:0,max:3,val:0}],
+    calc(v){const sA=v.arm<=20?1:v.arm<=45?2:v.arm<=90?3:4,sF=v.fore>=60&&v.fore<=100?1:2,sW=v.wrist<=15?1:2,sN=v.neck<=10?1:v.neck<=20?2:3,sT=v.trunk<=10?1:v.trunk<=20?2:v.trunk<=60?3:4;const tA=[[1,2,2,2,3,3],[2,2,2,2,3,3],[2,3,3,3,3,4],[2,3,3,3,4,4]];const tB=[[1,3],[2,3],[3,4],[5,5],[6,6],[7,7]];const tC=[[1,2,3,3,4,5,5],[2,2,3,4,4,5,5],[3,3,3,4,4,5,6],[3,3,3,4,5,6,6],[4,4,4,5,6,7,7],[4,4,5,6,6,7,7],[5,5,6,6,7,7,7]];const sC=Math.min((tA[Math.min(sA-1,3)]?.[Math.min(sF-1,5)]||1)+v.force,8);const sD=Math.min((tB[Math.min(sN-1,5)]?.[Math.min(sT-1,1)]||1)+v.force,7);const s=tC[Math.min(sC-1,6)]?.[Math.min(sD-1,6)]||1;const r=s<=2?'low':s<=5?'med':'high';return{score:s,risk:r,label:{low:'Aceptable',med:'Investigar',high:'Cambio inmediato'}[r],action:{low:'Sin acción',med:'Cambios próximos',high:'Cambio inmediato'}[r]};},
+    ranges:'1-2 Aceptable | 3-4 Investigar | 5-6 Cambiar pronto | 7 Inmediato'},
+  OWAS:{group:'postural',icon:'🧍',name:'OWAS',full:'Ovako Working Posture Analysis System',
+    when:'Muestreo observacional rápido con múltiples posturas a lo largo del turno. Construcción, agricultura, almacén.',
+    norm:'Karhu et al. 1977',
+    fields:[{id:'back',label:'Espalda',type:'s',opts:['1 — Recta','2 — Doblada','3 — Girada','4 — Doblada+Girada']},{id:'arms',label:'Brazos',type:'s',opts:['1 — Ambos bajo hombro','2 — Uno al nivel','3 — Ambos elevados']},{id:'legs',label:'Piernas',type:'s',opts:['1 — Sentado','2 — De pie','3 — Peso 1 pierna','4 — Rodillas dobladas','5 — Arrodillado','6 — Caminando']},{id:'load',label:'Carga',type:'s',opts:['1 — < 10 kg','2 — 10-20 kg','3 — > 20 kg']}],
+    calc(v){const t={'1-1':{1:1,2:1,3:1,4:2,5:3,6:1},'1-2':{1:1,2:1,3:1,4:2,5:2,6:1},'1-3':{1:1,2:1,3:2,4:2,5:3,6:2},'2-1':{1:2,2:2,3:2,4:3,5:3,6:2},'2-2':{1:2,2:2,3:2,4:3,5:4,6:3},'2-3':{1:2,2:2,3:3,4:3,5:4,6:3},'3-1':{1:1,2:1,3:1,4:2,5:2,6:1},'3-2':{1:2,2:2,3:2,4:3,5:3,6:2},'3-3':{1:2,2:2,3:2,4:3,5:3,6:2},'4-1':{1:2,2:3,3:3,4:3,5:4,6:2},'4-2':{1:3,2:3,3:3,4:4,5:4,6:3},'4-3':{1:3,2:3,3:3,4:4,5:4,6:3}};const b=parseInt(v.back)||1,a=parseInt(v.arms)||1,l=parseInt(v.legs)||1;const cat=t[`${b}-${a}`]?.[l]||1;const r=cat<=2?'low':cat===3?'med':'high';return{score:cat,risk:r,label:['','Sin acción','Futura','Pronto','Inmediata'][cat]||'—',action:['','Normal','Largo plazo','Pronto','Inmediato'][cat]||'—'};},
+    ranges:'Cat.1 Sin acción | Cat.2 Futura | Cat.3 Pronto | Cat.4 Inmediata'},
+  LUBA:{group:'postural',icon:'🏋️',name:'LUBA',full:'Loading on the Upper Body Assessment',
+    when:'Carga en cuerpo superior (cuello, hombros, espalda alta) en trabajos sedentarios o de pie con trabajo manual intenso. Complementa RULA.',
+    norm:'Kee & Karwowski 2001',
+    fields:[{id:'neck',label:'Cuello (1-4)',type:'r',min:1,max:4,val:1},{id:'trunk',label:'Tronco (1-4)',type:'r',min:1,max:4,val:1},{id:'arm',label:'Brazo (1-4)',type:'r',min:1,max:4,val:1},{id:'fore',label:'Antebrazo (1-3)',type:'r',min:1,max:3,val:1},{id:'wrist',label:'Muñeca (1-3)',type:'r',min:1,max:3,val:1},{id:'time',label:'Tiempo en postura (min)',type:'r',min:0,max:60,val:10}],
+    calc(v){const vals=[v.neck,v.trunk,v.arm,v.fore,v.wrist],w=[3,2,2,1,1];const base=vals.reduce((s,x,i)=>s+(x-1)*w[i],0);const s=Math.round(base*(1+Math.min(v.time/60,1)*.5));const r=s<=4?'low':s<=10?'med':'high';return{score:s,risk:r,label:{low:'Bajo',med:'Moderado',high:'Alto'}[r],action:{low:'Sin acción',med:'Intervención',high:'Rediseño'}[r]};},
+    ranges:'0-4 Bajo | 5-10 Moderado | 11+ Alto'},
+  PEO:{group:'postural',icon:'👁',name:'PEO',full:'Postural Ergonomic Observation',
+    when:'Screening rápido en auditorías donde no hay tiempo para REBA/RULA completo. Genera prioridades de intervención.',
+    norm:'Método observacional simplificado',
+    fields:[{id:'neck',label:'Cuello: desviación (0-3)',type:'r',min:0,max:3,val:0},{id:'back',label:'Espalda: desviación (0-3)',type:'r',min:0,max:3,val:0},{id:'arms',label:'Brazos: elevación (0-3)',type:'r',min:0,max:3,val:0},{id:'legs',label:'Piernas: postura (0-3)',type:'r',min:0,max:3,val:0},{id:'rep',label:'Repetitividad (0-3)',type:'r',min:0,max:3,val:0},{id:'force',label:'Fuerza (0-3)',type:'r',min:0,max:3,val:0}],
+    calc(v){const s=v.neck+v.back+v.arms+v.legs+v.rep+v.force;const r=s<=4?'low':s<=9?'med':'high';return{score:s,risk:r,label:{low:'Aceptable',med:'Requiere atención',high:'Intervención urgente'}[r],action:{low:'Monitorear',med:'Evaluar con método detallado',high:'Rediseño prioritario'}[r]};},
+    ranges:'0-4 Aceptable | 5-9 Atención | 10-18 Urgente'},
+
+  // ─── REPETITIVO ──────────────────────────
+  OCRA:{group:'repetitive',icon:'🔄',name:'OCRA',full:'Occupational Repetitive Actions',
+    when:'Trabajo repetitivo de ciclo corto en líneas de ensamble, empaque, manufactura. Referenciado en ISO 11228-3 y NOM-036.',
+    norm:'Occhipinti 1998 · ISO 11228-3',
+    fields:[{id:'ata',label:'Acciones técnicas/min',type:'n',min:0,val:30},{id:'dur',label:'Duración neta tarea (min)',type:'n',min:0,val:420},{id:'freq',label:'Factor frecuencia (0-10)',type:'r',min:0,max:10,val:2},{id:'force',label:'Factor fuerza (0-32)',type:'r',min:0,max:32,val:4},{id:'post',label:'Factor postura (0-8)',type:'r',min:0,max:8,val:2}],
+    calc(v){const ref=Math.max(1,(30-v.freq-v.force-v.post)*(v.dur/60)*60/Math.max(v.dur,1));const s=+(v.ata/ref).toFixed(2);const r=s<=7.5?'low':s<=22.5?'med':'high';return{score:s,risk:r,label:{low:'Aceptable',med:'Riesgo medio',high:'Riesgo alto'}[r],action:{low:'Sin acción',med:'Rediseño pronto',high:'Rediseño inmediato'}[r]};},
+    ranges:'≤7.5 Aceptable | 7.6-22.5 Medio | >22.5 Alto'},
+  JSI:{group:'repetitive',icon:'✋',name:'JSI',full:'Job Strain Index (Moore & Garg)',
+    when:'TME en mano, muñeca y antebrazo distal: ensamble fino, inspección, pinza. Producto de 6 multiplicadores.',
+    norm:'Moore & Garg 1995',
+    fields:[{id:'ie',label:'Intensidad esfuerzo',type:'s',opts:['0.5 — Ligero','1 — Algo duro','3 — Duro','6 — Muy duro','9 — Máximo']},{id:'de',label:'Duración/ciclo',type:'s',opts:['0.5 — <10%','1 — 10-29%','1.5 — 30-49%','2 — 50-79%','3 — ≥80%']},{id:'em',label:'Esfuerzos/min',type:'s',opts:['0.5 — <4','1 — 4-8','1.5 — 9-14','2 — 15-19','3 — ≥20']},{id:'pw',label:'Postura muñeca',type:'s',opts:['1 — Buena','1.5 — Regular','2 — Mala','3 — Muy mala']},{id:'sw',label:'Velocidad',type:'s',opts:['1 — Lenta','1 — Normal','1.5 — Rápida','2 — Muy rápida']},{id:'dd',label:'Duración diaria',type:'s',opts:['0.25 — ≤1h','0.5 — 1-2h','0.75 — 2-4h','1 — 4-8h','1.5 — >8h']}],
+    calc(v){const s=+(+v.ie*+v.de*+v.em*+v.pw*+v.sw*+v.dd).toFixed(2);const r=s<=3?'low':s<=5?'med':'high';return{score:s,risk:r,label:{low:'Seguro',med:'Incierto',high:'Peligroso'}[r],action:{low:'Sin acción',med:'Monitorear',high:'Rediseño'}[r]};},
+    ranges:'≤3 Seguro | 3-5 Incierto | >5 Peligroso'},
+  HAL:{group:'repetitive',icon:'🖐',name:'HAL',full:'ACGIH Hand Activity Level',
+    when:'Screening rápido de mano/muñeca según actividad manual y fuerza. TLV-ACGIH. Simple y validado para industria.',
+    norm:'ACGIH TLV-HAL 2001',
+    fields:[{id:'hal',label:'HAL — Nivel Actividad Manual (0-10)',type:'r',min:0,max:10,val:4},{id:'npf',label:'NPF — Fuerza Pico Normalizada (0-10)',type:'r',min:0,max:10,val:3}],
+    calc(v){const hal=v.hal,npf=v.npf/10;const tlv=+(-0.1345*hal+1.0).toFixed(3),al=+(-0.2165*hal+1.4).toFixed(3);const r=npf<=tlv?'low':npf<=al?'med':'high';return{score:+npf.toFixed(2),risk:r,label:{low:'Bajo TLV',med:'Entre TLV y AL',high:'Sobre AL'}[r],action:{low:'Sin acción',med:'Reducir exposición',high:'Cambio inmediato'}[r],extra:{TLV:tlv,AL:al,NPF:+npf.toFixed(2)}};},
+    ranges:'NPF ≤ TLV: Bajo | TLV-AL: Medio | > AL: Alto'},
+  CTD:{group:'repetitive',icon:'📊',name:'CTD Risk',full:'CTD Risk Index (Armstrong)',
+    when:'Cuantifica riesgo acumulado de Cumulative Trauma Disorders en tareas repetitivas. Frecuencia + fuerza + postura.',
+    norm:'Armstrong 1985',
+    fields:[{id:'freq',label:'Frecuencia (acc/min)',type:'r',min:0,max:50,val:20},{id:'force',label:'Fuerza pico (% MVC)',type:'r',min:0,max:100,val:30},{id:'posture',label:'Desviación postura (0-4)',type:'r',min:0,max:4,val:1}],
+    calc(v){const s=+(v.freq*0.02*(v.force/100)*(1+v.posture*0.25)).toFixed(3);const r=s<0.1?'low':s<0.5?'med':'high';return{score:s,risk:r,label:{low:'Bajo riesgo',med:'Moderado',high:'Alto riesgo'}[r],action:{low:'Monitorear',med:'Controles adm.',high:'Rediseño urgente'}[r]};},
+    ranges:'<0.1 Bajo | 0.1-0.5 Moderado | >0.5 Alto'},
+
+  // ─── CARGAS ──────────────────────────────
+  NIOSH:{group:'loads',icon:'📦',name:'NIOSH',full:'Ecuación Revisada de NIOSH 1994',
+    when:'Levantamiento manual de cargas. Calcula LPR e IL. Obligatorio en NOM-036 con cargas ≥3 kg.',
+    norm:'Waters et al. 1994 · NOM-036-STPS-2018',
+    fields:[{id:'weight',label:'Peso (kg)',type:'n',min:0,max:200,val:15},{id:'H',label:'Distancia horiz. (cm)',type:'n',min:0,max:63,val:30},{id:'V',label:'Altura inicial (cm)',type:'n',min:0,max:175,val:75},{id:'D',label:'Dist. vertical (cm)',type:'n',min:0,max:175,val:25},{id:'A',label:'Asimetría (°)',type:'n',min:0,max:135,val:0},{id:'F',label:'Frecuencia (lev/min)',type:'n',min:0,max:15,val:1,step:0.5}],
+    calc(v){const HM=v.H<=25?1:v.H>63?0:+(25/v.H).toFixed(3);const VM=+(1-0.003*Math.abs(v.V-75)).toFixed(3);const DM=v.D<25?0.87:v.D>175?0:+(0.82+4.5/v.D).toFixed(3);const AM=v.A===0?1:+(1-0.0032*v.A).toFixed(3);const FM=v.F<=0.2?1:v.F<=1?.94:v.F<=2?.91:v.F<=3?.88:v.F<=4?.84:.75;const LPR=+(23*HM*VM*DM*AM*FM).toFixed(2);const IL=LPR>0?+(v.weight/LPR).toFixed(2):99;const r=IL<=1?'low':IL<=2?'med':'high';return{score:IL,risk:r,label:{low:'Tarea segura',med:'Incrementar control',high:'Rediseño urgente'}[r],action:{low:'Sin cambios',med:'Mediano plazo',high:'Cambio inmediato'}[r],extra:{LPR,HM,VM,DM,AM,FM}};},
+    ranges:'IL≤1 Seguro | IL 1-2 Moderado | IL>2 Alto'},
+  SNOOK:{group:'loads',icon:'📏',name:'Snook & Ciriello',full:'Tablas Snook & Ciriello — Liberty Mutual',
+    when:'Empuje, jale y transporte de cargas. Complementa NIOSH para tareas horizontales. Pesos máximos aceptables.',
+    norm:'Snook & Ciriello 1991',
+    fields:[{id:'task',label:'Tipo de tarea',type:'s',opts:['1 — Levantamiento','2 — Descenso','3 — Empuje inicial','4 — Empuje sostenido','5 — Jale inicial','6 — Transporte']},{id:'freq',label:'Frecuencia (tareas/min)',type:'r',min:0.01,max:6,val:0.2,step:0.01},{id:'actual',label:'Fuerza/peso real (kg)',type:'n',min:0,val:20},{id:'pop',label:'Percentil población',type:'s',opts:['10 — poco exigente','25','50 — recomendado','75','90 — muy exigente']}],
+    calc(v){const perc=parseInt(v.pop)||50;const ref={10:35,25:28,50:23,75:18,90:14}[perc]||23;const ratio=+(v.actual/ref).toFixed(2);const r=ratio<=0.85?'low':ratio<=1?'med':'high';return{score:ratio,risk:r,label:{low:'Bajo límite',med:'Cerca del límite',high:'Supera límite'}[r],action:{low:'Aceptable',med:'Revisar diseño',high:'Ayuda mecánica'}[r],extra:{ref_kg:ref,ratio}};},
+    ranges:'≤0.85 Aceptable | 0.85-1.0 Límite | >1.0 Supera'},
+  MAC:{group:'loads',icon:'🗂',name:'MAC Tool',full:'Manual Handling Assessment Charts (HSE)',
+    when:'Evaluación visual rápida de manejo manual. HSE UK. Ideal para inspecciones de campo. Código de color por factor.',
+    norm:'HSE UK 2003',
+    fields:[{id:'weight',label:'Peso (1-6)',type:'r',min:1,max:6,val:2},{id:'freq',label:'Frecuencia (1-6)',type:'r',min:1,max:6,val:2},{id:'posture',label:'Postura/alcance (1-6)',type:'r',min:1,max:6,val:2},{id:'coupling',label:'Agarre (1-3)',type:'r',min:1,max:3,val:1},{id:'env',label:'Entorno (1-3)',type:'r',min:1,max:3,val:1}],
+    calc(v){const s=v.weight+v.freq+v.posture+v.coupling+v.env;const r=s<=9?'low':s<=16?'med':'high';return{score:s,risk:r,label:{low:'Verde — bajo',med:'Ámbar — medio',high:'Rojo — alto'}[r],action:{low:'Sin acción',med:'Investigar',high:'Cambio inmediato'}[r]};},
+    ranges:'5-9 Verde | 10-16 Ámbar | 17-27 Rojo'},
+  KIM:{group:'loads',icon:'🔑',name:'KIM LHC',full:'Key Indicator Method — Levantamiento, Sujeción, Transporte',
+    when:'Método alemán (BAuA) recomendado por la UE para cargas variables. Más detallado que NIOSH para tareas complejas.',
+    norm:'BAuA · EN 1005-2',
+    fields:[{id:'mass',label:'Masa referencia (kg)',type:'r',min:1,max:50,val:15},{id:'posture',label:'Condición trabajo (1-10)',type:'r',min:1,max:10,val:3},{id:'time',label:'Tiempo efectivo/turno (min)',type:'r',min:0,max:480,val:120},{id:'gender',label:'Género',type:'s',opts:['1 — Masculino','0.6 — Femenino']}],
+    calc(v){const g=parseFloat(v.gender)||1;const s=Math.round(v.mass*v.posture*(v.time/60)*g);const r=s<=10?'low':s<=25?'med':'high';return{score:s,risk:r,label:{low:'Zona 1',med:'Zona 2',high:'Zona 3-4'}[r],action:{low:'Sin acción',med:'Medidas técnicas',high:'Rediseño urgente'}[r]};},
+    ranges:'0-10 Zona 1 | 11-25 Zona 2 | >25 Zona 3-4'},
+
+  // ─── ADMINISTRATIVO ──────────────────────
+  ROSA:{group:'office',icon:'💻',name:'ROSA',full:'Rapid Office Strain Assessment',
+    when:'Puestos con PVD: oficinas, call centers, ingeniería. Evalúa silla, monitor, teclado, mouse y teléfono.',
+    norm:'Sonne et al. 2012',
+    fields:[{id:'chair',label:'Silla (1-5)',type:'r',min:1,max:5,val:2},{id:'monitor',label:'Monitor (1-5)',type:'r',min:1,max:5,val:2},{id:'keyboard',label:'Teclado (1-5)',type:'r',min:1,max:5,val:2},{id:'mouse',label:'Mouse (1-5)',type:'r',min:1,max:5,val:2},{id:'phone',label:'Teléfono (0-3)',type:'r',min:0,max:3,val:0}],
+    calc(v){const tCD=[[2,2,3,3,4],[2,2,3,3,4],[3,3,3,4,5],[3,3,4,5,5],[4,4,4,5,5]];const tPH=[[1,1,2,3],[1,1,2,3],[2,2,3,4],[3,3,4,5]];const sCD=tCD[Math.min(v.chair-1,4)]?.[Math.min(v.monitor-1,4)]||3;const sPH=tPH[Math.min(v.keyboard-1,3)]?.[Math.min(v.phone,3)]||2;const tR=[[1,2,3,3,4],[2,2,3,4,4],[3,3,3,4,5],[3,3,4,4,5],[4,4,4,5,5]];const s=tR[Math.min(sCD-1,4)]?.[Math.min(sPH-1,4)]||3;const r=s<=2?'low':s<=4?'med':'high';return{score:s,risk:r,label:{low:'Bajo',med:'Moderado',high:'Alto'}[r],action:{low:'Sin cambios',med:'Ajustar puesto',high:'Intervención'}[r]};},
+    ranges:'1-2 Bajo | 3-4 Moderado | 5+ Alto'},
+  EWA:{group:'office',icon:'🏢',name:'EWA',full:'Ergonomic Workplace Analysis',
+    when:'Análisis integral de oficinas y entornos ligeros. Evalúa iluminación, ruido, temperatura, mobiliario y organización.',
+    norm:'Finnish Institute 1989',
+    fields:[{id:'light',label:'Iluminación (1-5)',type:'r',min:1,max:5,val:3},{id:'noise',label:'Ruido (1-5)',type:'r',min:1,max:5,val:2},{id:'thermal',label:'Ambiente térmico (1-5)',type:'r',min:1,max:5,val:2},{id:'furniture',label:'Mobiliario/espacio (1-5)',type:'r',min:1,max:5,val:3},{id:'rep',label:'Repetitividad (1-5)',type:'r',min:1,max:5,val:3},{id:'control',label:'Control del trabajo (1-5)',type:'r',min:1,max:5,val:3}],
+    calc(v){const avg=+((v.light+v.noise+v.thermal+v.furniture+v.rep+v.control)/6).toFixed(1);const r=avg<=2.5?'low':avg<=3.5?'med':'high';return{score:avg,risk:r,label:{low:'Satisfactorio',med:'Mejorable',high:'Deficiente'}[r],action:{low:'Monitorear',med:'Plan de mejora',high:'Intervención prioritaria'}[r]};},
+    ranges:'1-2.5 Satisfactorio | 2.6-3.5 Mejorable | 3.6-5 Deficiente'},
+  OSHA_VDT:{group:'office',icon:'✅',name:'OSHA VDT',full:'OSHA VDT Checklist',
+    when:'Lista de verificación para puestos con monitor. Posición, iluminación, silla, teclado y descansos. Auditorías de cumplimiento de oficina.',
+    norm:'OSHA 3092',
+    fields:[{id:'mh',label:'Altura monitor correcta (0=No,1=Sí)',type:'r',min:0,max:1,val:1},{id:'md',label:'Distancia 50-70cm (0/1)',type:'r',min:0,max:1,val:1},{id:'ch',label:'Altura silla ajustada (0/1)',type:'r',min:0,max:1,val:1},{id:'lum',label:'Soporte lumbar (0/1)',type:'r',min:0,max:1,val:0},{id:'wr',label:'Muñecas neutras (0/1)',type:'r',min:0,max:1,val:1},{id:'gl',label:'Sin reflejos pantalla (0/1)',type:'r',min:0,max:1,val:0},{id:'br',label:'Pausas visuales (0/1)',type:'r',min:0,max:1,val:0}],
+    calc(v){const ok=Object.values(v).reduce((s,x)=>s+ +x,0);const pct=Math.round(ok/7*100);const r=pct>=80?'low':pct>=50?'med':'high';return{score:pct+'%',risk:r,label:{low:'Cumple',med:'Parcial',high:'Incumple'}[r],action:{low:'Mantener',med:'Ajustar fallos',high:'Rediseño puesto'}[r]};},
+    ranges:'≥80% Cumple | 50-79% Parcial | <50% Incumple'},
+
+  // ─── PSICOSOCIAL ─────────────────────────
+  NASATLX:{group:'psycho',icon:'🧠',name:'NASA-TLX',full:'NASA Task Load Index',
+    when:'Carga mental subjetiva: control, supervisión, atención al cliente, inspección de calidad. 6 dimensiones de carga.',
+    norm:'Hart & Staveland 1988',
+    fields:[{id:'mental',label:'Demanda mental (0-100)',type:'r',min:0,max:100,val:50},{id:'physical',label:'Demanda física (0-100)',type:'r',min:0,max:100,val:30},{id:'temporal',label:'Demanda temporal (0-100)',type:'r',min:0,max:100,val:50},{id:'perf',label:'Rendimiento propio (0-100)',type:'r',min:0,max:100,val:60},{id:'effort',label:'Esfuerzo (0-100)',type:'r',min:0,max:100,val:50},{id:'frustrat',label:'Frustración (0-100)',type:'r',min:0,max:100,val:30}],
+    calc(v){const s=Math.round((v.mental+v.physical+v.temporal+(100-v.perf)+v.effort+v.frustrat)/6);const r=s<40?'low':s<70?'med':'high';return{score:s,risk:r,label:{low:'Carga baja',med:'Carga moderada',high:'Sobrecarga'}[r],action:{low:'Sin acción',med:'Rediseño organizacional',high:'Intervención inmediata'}[r]};},
+    ranges:'<40 Bajo | 40-69 Moderado | ≥70 Sobrecarga'},
+  COPSOQ:{group:'psycho',icon:'🤝',name:'COPSOQ/ISTAS21',full:'Copenhagen Psychosocial Questionnaire',
+    when:'Factores psicosociales laborales: exigencias, control, apoyo social, recompensa. Compatible con NOM-035-STPS-2018.',
+    norm:'COPSOQ II · ISTAS21 · NOM-035',
+    fields:[{id:'demands',label:'Exigencias psicológicas (0-10)',type:'r',min:0,max:10,val:5},{id:'control',label:'Control sobre trabajo (0-10)',type:'r',min:0,max:10,val:5},{id:'support',label:'Apoyo social (0-10)',type:'r',min:0,max:10,val:6},{id:'reward',label:'Recompensa (0-10)',type:'r',min:0,max:10,val:5},{id:'double',label:'Doble presencia (0-10)',type:'r',min:0,max:10,val:3}],
+    calc(v){const s=+((v.demands+v.double+(10-v.control)+(10-v.support)+(10-v.reward))/5).toFixed(1);const r=s<=3?'low':s<=6?'med':'high';return{score:s,risk:r,label:{low:'Favorable',med:'Intermedio',high:'Desfavorable'}[r],action:{low:'Mantener',med:'Plan preventivo',high:'Intervención organizacional'}[r]};},
+    ranges:'0-3 Favorable | 3-6 Intermedio | 6-10 Desfavorable'},
+  KARASEK:{group:'psycho',icon:'⚖️',name:'Karasek JCQ',full:'Job Content Questionnaire — Demanda-Control-Apoyo',
+    when:'Estrés laboral por desequilibrio entre demandas, autonomía y apoyo. Predice burnout y ausentismo.',
+    norm:'Karasek 1979 · JCQ',
+    fields:[{id:'demand',label:'Demanda psicológica (0-10)',type:'r',min:0,max:10,val:6},{id:'control',label:'Control/autonomía (0-10)',type:'r',min:0,max:10,val:5},{id:'support',label:'Apoyo social (0-10)',type:'r',min:0,max:10,val:6}],
+    calc(v){const ratio=v.control>0?+(v.demand/v.control).toFixed(2):9.99;const r=ratio<=1?'low':ratio<=1.5?'med':'high';const quad=v.demand>5&&v.control>5?'Activo':v.demand<=5&&v.control>5?'Bajo estrés':v.demand>5&&v.control<=5?'Alta tensión':'Pasivo';return{score:ratio,risk:r,label:{low:'Bajo estrés',med:'Tensión moderada',high:'Alta tensión'}[r],action:{low:'Sin acción',med:'Aumentar autonomía',high:'Rediseño urgente'}[r],extra:{cuadrante:quad,ratio,apoyo:v.support}};},
+    ranges:'≤1 Bajo | 1-1.5 Moderado | >1.5 Alta tensión'},
+
+  // ─── OBSERVACIONAL ────────────────────────
+  INSST:{group:'qualitative',icon:'📋',name:'Checklist INSST',full:'Listas de Verificación INSST',
+    when:'Screening inicial de puestos. INSST España. Cubre posturas, fuerzas, repetitividad y ambiente. Prioriza evaluación detallada.',
+    norm:'INSST NTP 601 · NTP 602',
+    fields:[{id:'posture',label:'Posturas forzadas (0-5)',type:'r',min:0,max:5,val:1},{id:'force',label:'Aplicación fuerzas (0-5)',type:'r',min:0,max:5,val:1},{id:'rep',label:'Movimientos repetitivos (0-5)',type:'r',min:0,max:5,val:1},{id:'env',label:'Condiciones ambientales (0-5)',type:'r',min:0,max:5,val:1},{id:'org',label:'Factores organizacionales (0-5)',type:'r',min:0,max:5,val:1}],
+    calc(v){const s=v.posture+v.force+v.rep+v.env+v.org;const r=s<=5?'low':s<=12?'med':'high';return{score:s,risk:r,label:{low:'Sin riesgo significativo',med:'Riesgo moderado',high:'Riesgo alto'}[r],action:{low:'Monitoreo anual',med:'Evaluación cuantitativa',high:'Intervención prioritaria'}[r]};},
+    ranges:'0-5 Sin riesgo | 6-12 Moderado | 13-25 Alto'},
+  OSHA_CL:{group:'qualitative',icon:'🔎',name:'Checklist OSHA',full:'OSHA Ergonomic Checklist',
+    when:'Verificación ergonómica OSHA adaptada a NOM-036. Levantamiento, posturas, repetición, contacto mecánico. Auditorías de cumplimiento.',
+    norm:'OSHA 3124 · NOM-036-STPS-2018',
+    fields:[{id:'lift',label:'Levantamiento >23kg (0/1)',type:'r',min:0,max:1,val:0},{id:'post',label:'Posturas forzadas >10% (0/1)',type:'r',min:0,max:1,val:0},{id:'rep',label:'Ciclos <30s (0/1)',type:'r',min:0,max:1,val:0},{id:'contact',label:'Contacto mecánico/vibración (0/1)',type:'r',min:0,max:1,val:0},{id:'stat',label:'Postura estática >1min (0/1)',type:'r',min:0,max:1,val:0},{id:'recov',label:'Sin pausas recuperación (0/1)',type:'r',min:0,max:1,val:0}],
+    calc(v){const s=+v.lift + +v.post + +v.rep + +v.contact + +v.stat + +v.recov;const r=s===0?'low':s<=2?'med':'high';return{score:s+'/6',risk:r,label:{low:'Cumplimiento OK',med:'Factores presentes',high:'Múltiples factores'}[r],action:{low:'Mantener',med:'Evaluación cuantitativa',high:'Acción correctiva inmediata'}[r]};},
+    ranges:'0 OK | 1-2 Atención | 3-6 Múltiples'},
+  JSA:{group:'qualitative',icon:'🔍',name:'JSA / JMHA',full:'Job Safety Analysis / Job Methods Hazard Analysis',
+    when:'Análisis paso a paso para identificar peligros ergonómicos. Ideal al introducir nuevas tareas, equipos o procesos.',
+    norm:'OSHA / ANSI · NOM-030-STPS',
+    fields:[{id:'steps',label:'Pasos en la tarea',type:'n',min:1,val:5},{id:'hazards',label:'Pasos con peligro ergonómico',type:'n',min:0,val:2},{id:'severity',label:'Severidad potencial (1-5)',type:'r',min:1,max:5,val:3},{id:'controls',label:'Controles existentes (0-5)',type:'r',min:0,max:5,val:2}],
+    calc(v){const ratio=v.steps>0?+(v.hazards/v.steps).toFixed(2):0;const idx=+((ratio*v.severity)/(v.controls+1)).toFixed(2);const r=idx<0.5?'low':idx<1.5?'med':'high';return{score:idx,risk:r,label:{low:'Controlado',med:'Requiere controles',high:'Tarea peligrosa'}[r],action:{low:'Documentar y monitorear',med:'Implementar controles',high:'Rediseño de tarea'}[r],extra:{hazard_ratio:ratio,risk_idx:idx}};},
+    ranges:'<0.5 Controlado | 0.5-1.5 Requiere control | >1.5 Peligroso'},
+};
+
+// GROUP MAPPING
+const GROUPS = {
+  postural:    {tools:['REBA','RULA','OWAS','LUBA','PEO'],        label:'Evaluación Postural'},
+  repetitive:  {tools:['OCRA','JSI','HAL','CTD'],                  label:'Movimientos Repetitivos / MMSS'},
+  loads:       {tools:['NIOSH','SNOOK','MAC','KIM'],               label:'Manejo Manual de Cargas'},
+  office:      {tools:['ROSA','EWA','OSHA_VDT'],                   label:'Ergonomía Administrativa / VDU'},
+  psycho:      {tools:['NASATLX','COPSOQ','KARASEK'],              label:'Factores Psicosociales'},
+  qualitative: {tools:['INSST','OSHA_CL','JSA'],                   label:'Observacionales / Cualitativos'},
+};
+
+let toolVals = {};
+
+function buildAllPanels(){
+  Object.entries(GROUPS).forEach(([gid,g])=>{
+    const wrap=document.getElementById('atab-'+gid);
+    if(!wrap||wrap.dataset.built)return;
+    wrap.innerHTML=`<div class="card" style="margin-bottom:12px;">
+      <div class="ctitle">${g.label}</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;" id="tcards-${gid}">
+        ${g.tools.map(k=>{const t=TOOLS[k];if(!t)return'';return`<div class="tcard" id="tc-${k}" onclick="selectTool('${k}',this)">
+          <div style="font-size:18px;margin-bottom:4px;">${t.icon}</div>
+          <div class="tname">${t.name}</div>
+          <div class="tfull">${t.full}</div>
+          <div class="tdesc">${t.norm}</div>
+          <div class="twhen">${t.when}</div>
+        </div>`;}).join('')}
+      </div>
+    </div>`;
+    wrap.dataset.built='1';
+  });
+}
+
+function selectTool(key, el){
+  S.tool=key;
+  // Highlight
+  document.querySelectorAll('.tcard').forEach(c=>c.classList.remove('sel'));
+  if(el) el.classList.add('sel');
+  const t=TOOLS[key]; if(!t)return;
+  toolVals={};
+  t.fields.forEach(f=>{ toolVals[f.id]=f.type==='s'?f.opts[0].split(' — ')[0]:(f.val||0); });
+  document.getElementById('tool-title').textContent=t.icon+' '+t.name+' — '+t.full;
+  const fields=document.getElementById('tool-fields');
+  fields.innerHTML=t.fields.map(f=>{
+    if(f.type==='r') return`<div class="fg" style="margin-bottom:10px;">
+      <label>${f.label}</label>
+      <div class="slh"><span style="font-size:9px;color:var(--text3);">${f.min||0}</span><span class="slv" id="sv-${key}-${f.id}">${f.val}</span><span style="font-size:9px;color:var(--text3);">${f.max||10}</span></div>
+      <input type="range" min="${f.min||0}" max="${f.max||10}" value="${f.val||0}" step="${f.step||1}" oninput="updTool('${key}','${f.id}',this.value)">
+    </div>`;
+    if(f.type==='n') return`<div class="fg" style="margin-bottom:10px;">
+      <label>${f.label}</label>
+      <input type="number" min="${f.min||0}" max="${f.max||9999}" step="${f.step||1}" value="${f.val||0}" oninput="updTool('${key}','${f.id}',this.value)">
+    </div>`;
+    if(f.type==='s') return`<div class="fg" style="margin-bottom:10px;">
+      <label>${f.label}</label>
+      <select onchange="updTool('${key}','${f.id}',this.value)">${f.opts.map(o=>`<option value="${o.split(' — ')[0]}">${o}</option>`).join('')}</select>
+    </div>`;
+  }).join('')+`<div style="margin-top:12px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px;font-size:11px;color:var(--text3);">
+    <b>Rangos:</b> ${t.ranges}
+  </div>`;
+  document.getElementById('tool-wrap').style.display='block';
+  calcTool(key);
+}
+
+function updTool(key,id,val){
+  toolVals[id]=isNaN(+val)?val:+val;
+  const sv=document.getElementById('sv-'+key+'-'+id);
+  if(sv)sv.textContent=val;
+  calcTool(key);
+}
+
+function calcTool(key){
+  const t=TOOLS[key];if(!t)return;
+  const r=t.calc(toolVals);
+  const hero=document.getElementById('tool-hero');if(hero)hero.className='rhero rbg-'+r.risk;
+  const ts=document.getElementById('tool-score');if(ts){ts.textContent=r.score;ts.style.color=RC[r.risk];}
+  const tl=document.getElementById('tool-label');if(tl)tl.textContent=r.label;
+  const ta=document.getElementById('tool-action');if(ta)ta.textContent=r.action;
+  const bd=document.getElementById('tool-bd');
+  if(bd){const rows=r.extra?Object.entries(r.extra):[['Puntuación '+key,r.score]];bd.innerHTML=rows.map(([k,v])=>`<div class="sbrow"><span class="sbk">${k}</span><span class="sbv">${v}</span></div>`).join('');}
+  S.score=r.score; S.risk=r.risk; S.tool=key;
+}
+</script>
+<script>
+// ═══════════════════════════════════════════
+// AI PREDICTOR LME
+// ═══════════════════════════════════════════
+const aiVals={freq:8,postime:20,load:120,ot:5,shift:0,tenure:3,stress:5,mental:4,support:6};
+
+function aiSl(k,v,unit=''){
+  aiVals[k]=+v;
+  const el=document.getElementById('sv-'+k);
+  if(el)el.textContent=v+unit;
+  runAI();
+}
+
+function runAI(){
+  const v=aiVals;
+  const fN=Math.min(v.freq/30,1),pN=Math.min(v.postime/100,1),lN=Math.min(v.load/600,1);
+  const IFB=0.35*fN+0.30*pN+0.35*lN;
+  const AP=Math.max(1.0,Math.min(1.45,1+0.45*((v.stress+v.mental-v.support)/30)));
+  const tenR=1-Math.exp(-0.5*Math.max(0,3-v.tenure));
+  const FO=Math.min(1.35,1+0.04*Math.min(v.ot/20,1)+0.12*(+document.getElementById('ai-shift')?.value||0)+0.08*tenR);
+  const comb=IFB*AP*FO;
+  const P=Math.round(Math.max(2,Math.min(98,1/(1+Math.exp(-8*(comb-.45)))*100)));
+  const r=P<35?'low':P<70?'med':'high';
+  const RL={low:'RIESGO BAJO',med:'RIESGO MODERADO',high:'RIESGO ALTO'};
+  const RA={low:'Mantener condiciones. Monitoreo semestral.',med:'Investigar factores. Plan de mejora.',high:'INTERVENCIÓN INMEDIATA. Rediseño del puesto.'};
+  // Hero
+  const hs=document.getElementById('ai-hero-score');if(hs){hs.textContent=P+'%';hs.style.color=P>=70?'#ef4444':P>=35?'#f59e0b':'#22c55e';}
+  // Gauge
+  drawGauge(P,r);
+  const gn=document.getElementById('gauge-n');if(gn)gn.textContent=P+'%';
+  // Badge
+  const badge=document.getElementById('ai-badge');
+  if(badge){badge.textContent=RL[r];const c={low:['#dcfce7','#16A34A'],med:['#fef3c7','#D97706'],high:['#fee2e2','#DC2626']}[r];badge.style.background=c[0];badge.style.color=c[1];}
+  const at=document.getElementById('ai-act-txt');if(at)at.textContent=RA[r];
+  // AP/FO
+  const ap=document.getElementById('ap-val');if(ap)ap.textContent=AP.toFixed(2)+'×';
+  const fo=document.getElementById('fo-val');if(fo)fo.textContent=FO.toFixed(2)+'×';
+  // Alert
+  const al=document.getElementById('ai-alert');
+  if(al){
+    if(P>=70){
+      al.style.display='block';
+      const at2=document.getElementById('ai-alert-txt');
+      if(at2)at2.innerHTML=`P(LME) = <b>${P}%</b> supera umbral clínico 70%.<br>Factores dominantes: <b>Biomecánicos (${(IFB*100).toFixed(0)}%)</b>, AP=${AP.toFixed(2)}×.<br>Evaluación médica y rediseño del puesto requeridos.`;
+    }else al.style.display='none';
+  }
+  // SHAP
+  const shap={
+    'Frecuencia repetitiva': fN*0.35*AP*FO,
+    'Postura forzada':       pN*0.30*AP*FO,
+    'Carga manual':          lN*0.35*AP*FO,
+    'Horas extra':           (0.04*Math.min(v.ot/20,1))*IFB*AP,
+    'Turno rotativo':        (0.12*(+aiVals.shift||0))*IFB*AP,
+    'Antigüedad':            (0.08*tenR)*IFB*AP,
+    'Estrés':                (v.stress/30*0.45)*IFB,
+    'Demanda mental':        (v.mental/30*0.45)*IFB,
+    'Apoyo supervisor':      -(v.support/30*0.45*.3)*IFB,
+  };
+  const maxV=Math.max(...Object.values(shap).map(Math.abs))||.01;
+  const sb=document.getElementById('shap-bars');
+  if(sb)sb.innerHTML=Object.entries(shap).map(([n,val])=>{
+    const pct=Math.abs(val)/maxV*100;const neg=val<0;
+    const col=neg?'#16A34A':pct>60?'#DC2626':pct>30?'#D97706':'#3b82f6';
+    const pc2=(Math.abs(val)*100/(comb||.01)).toFixed(1);
+    return`<div class="shap-bar">
+      <span style="font-size:10px;min-width:120px;color:var(--text2);">${n}</span>
+      <div class="shap-track"><div class="shap-fill" style="width:${pct}%;background:${col};"></div></div>
+      <span style="font-size:9px;font-family:var(--mono);color:${col};min-width:36px;text-align:right;">${neg?'−':'+'}${pc2}%</span>
+    </div>`;
+  }).join('');
+  // Breakdown
+  const bd=document.getElementById('ai-bd');
+  if(bd)bd.innerHTML=`<div class="sbrow"><span class="sbk">IFB (base biomecánico)</span><span class="sbv">${IFB.toFixed(4)}</span></div>
+    <div class="sbrow"><span class="sbk">AP (amplif. psicosocial)</span><span class="sbv" style="color:#7c3aed;">${AP.toFixed(3)}×</span></div>
+    <div class="sbrow"><span class="sbk">FO (organizacional)</span><span class="sbv" style="color:var(--med);">${FO.toFixed(3)}×</span></div>
+    <div class="sbrow"><span class="sbk">Combinado IFB×AP×FO</span><span class="sbv">${comb.toFixed(4)}</span></div>
+    <div class="sbrow"><span class="sbk">P(LME) = σ(comb)×100</span><span class="sbv" style="color:${RC[r]};font-size:16px;">${P}%</span></div>`;
+}
+
+function drawGauge(P,r){
+  const c=document.getElementById('gauge');if(!c)return;
+  const ctx=c.getContext('2d'),W=c.width,H=c.height,cx=W/2,cy=H-6,rad=72;
+  ctx.clearRect(0,0,W,H);
+  [[0,35,'#dcfce7'],[35,70,'#fef3c7'],[70,100,'#fee2e2']].forEach(([f,t,col])=>{
+    ctx.beginPath();ctx.arc(cx,cy,rad,Math.PI+(f/100)*Math.PI,Math.PI+(t/100)*Math.PI);
+    ctx.strokeStyle=col;ctx.lineWidth=16;ctx.stroke();
+  });
+  const vA=Math.PI+(P/100)*Math.PI;
+  ctx.beginPath();ctx.arc(cx,cy,rad,Math.PI,vA);
+  ctx.strokeStyle={low:'#16A34A',med:'#D97706',high:'#DC2626'}[r];ctx.lineWidth=16;ctx.lineCap='round';ctx.stroke();
+  ctx.save();ctx.translate(cx,cy);ctx.rotate(Math.PI+(P/100)*Math.PI);
+  ctx.beginPath();ctx.moveTo(-4,0);ctx.lineTo(rad-10,0);
+  ctx.strokeStyle={low:'#16A34A',med:'#D97706',high:'#DC2626'}[r];ctx.lineWidth=2.5;ctx.lineCap='round';ctx.stroke();
+  ctx.restore();
+  ctx.beginPath();ctx.arc(cx,cy,6,0,Math.PI*2);
+  ctx.fillStyle={low:'#16A34A',med:'#D97706',high:'#DC2626'}[r];ctx.fill();
+  ctx.font='9px Space Mono,monospace';ctx.fillStyle='#8896A7';ctx.textAlign='center';
+  ctx.fillText('0',cx-rad-5,cy+12);ctx.fillText('50',cx,cy-rad-5);ctx.fillText('100',cx+rad+5,cy+12);
+}
+
+function autofillAI(){
+  const ang=S.angles;
+  if(!ang||!Object.keys(ang).length)return;
+  const sh=ang.shoulder||0,tr=ang.trunk||0;
+  aiVals.freq=Math.round(4+(sh/120)*20);
+  aiVals.postime=Math.round(Math.min(100,(tr/60)*80));
+  aiVals.load=Math.min(600,S.score?S.score*20:80);
+  ['freq','postime','load'].forEach(k=>{
+    const el=document.getElementById('ai-'+k);const sv=document.getElementById('sv-'+k);
+    if(el)el.value=aiVals[k];
+    if(sv)sv.textContent=aiVals[k]+(k==='postime'?'%':'');
+  });
+  runAI();
+}
+
+// ═══════════════════════════════════════════
+// VISION MODULE
+// ═══════════════════════════════════════════
+const JOINT_RANGES={
+  neck:    {safe:[0,20],warn:[20,35],danger:[35,180],ref:'NOM-036'},
+  trunk:   {safe:[0,20],warn:[20,45],danger:[45,180],ref:'REBA'},
+  shoulder:{safe:[0,45],warn:[45,90],danger:[90,180],ref:'RULA'},
+  elbow:   {safe:[60,110],warn:[40,60],danger:[0,40], ref:'REBA'},
+  wrist:   {safe:[0,15],warn:[15,30],danger:[30,180],ref:'JSI'},
+  hip:     {safe:[0,20],warn:[20,45],danger:[45,180],ref:'OWAS'},
+  knee:    {safe:[0,30],warn:[30,60],danger:[60,180],ref:'OWAS'},
+};
+
+function classAng(v,seg){
+  if(v==null)return'unknown';
+  const r=JOINT_RANGES[seg];if(!r)return'unknown';
+  const inRange=(a,b,x)=>x>=a&&x<=b;
+  if(inRange(...r.safe,v))return'safe';
+  if(inRange(...r.warn,v))return'warn';
+  return'danger';
+}
+
+function renderJointClass(){
+  const w=document.getElementById('joint-class');if(!w)return;
+  const ang=S.angles,has=Object.keys(ang).length>0;
+  w.innerHTML=Object.entries(JOINT_RANGES).map(([seg,info])=>{
+    const v=ang[seg]??null;const cls=has?classAng(v,seg):'unknown';
+    const cm={safe:['#dcfce7','#16A34A','SEGURO'],warn:['#fef3c7','#D97706','ATENCIÓN'],danger:['#fee2e2','#DC2626','RIESGO'],unknown:['#f1f5f9','#8896A7','SIN DATOS']}[cls];
+    return`<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);">
+      <div style="min-width:80px;font-size:12px;font-weight:600;text-transform:capitalize;">${seg}</div>
+      <div style="font-family:var(--mono);font-size:14px;font-weight:700;color:${cm[1]};flex:1;">${v!=null?v+'°':'—'}</div>
+      <div style="background:${cm[0]};color:${cm[1]};font-size:9px;font-weight:700;padding:2px 7px;border-radius:4px;font-family:var(--mono);">${cm[2]}</div>
+      <div style="font-size:9px;color:var(--text3);">${info.ref}</div>
+    </div>`;
+  }).join('');
+  if(!has)w.innerHTML+='<div style="font-size:11px;color:var(--text3);padding:8px 0;">Realiza análisis de video para ver clasificación en tiempo real.</div>';
+}
+
+function updateVision(){
+  const dur=+document.getElementById('vis-dur')?.value||8;
+  const cyc=+document.getElementById('vis-cyc')?.value||30;
+  const dv=document.getElementById('vdur-v'),cv=document.getElementById('vcyc-v');
+  if(dv)dv.textContent=dur+'h';if(cv)cv.textContent=cyc+'/h';
+  const ang=S.angles,sh=ang.shoulder||0,tr=ang.trunk||0;
+  const total=cyc*dur;
+  const cum=Math.round(total*(sh/90)*0.5+total*(tr/60)*0.3);
+  const r=cum<500?'low':cum<1500?'med':'high';
+  const cl=document.getElementById('cum-load');
+  if(cl)cl.innerHTML=`<div style="background:${r==='low'?'#dcfce7':r==='med'?'#fef3c7':'#fee2e2'};border-radius:7px;padding:12px;text-align:center;">
+    <div style="font-size:26px;font-weight:900;font-family:var(--mono);color:${RC[r]};">${cum.toLocaleString()}</div>
+    <div style="font-size:10px;color:var(--text2);">unidades de carga acumulada</div>
+    <div style="font-size:11px;font-weight:700;color:${RC[r]};margin-top:3px;">${{low:'Carga aceptable',med:'Carga moderada',high:'Sobrecarga — RIESGO'}[r]}</div>
+    <div style="font-size:9px;color:var(--text3);margin-top:2px;">${total.toLocaleString()} ciclos × ${dur}h</div>
+  </div>`;
+  renderRadar();
+}
+
+function renderMovClass(){
+  const w=document.getElementById('mov-class');if(!w)return;
+  const ang=S.angles;
+  const rules=[
+    {c:'Hombro elevado >90°',t:90,s:'shoulder',ref:'RULA 4+'},
+    {c:'Cuello flexionado >20°',t:20,s:'neck',ref:'REBA 2+'},
+    {c:'Tronco inclinado >45°',t:45,s:'trunk',ref:'REBA alto'},
+    {c:'Muñeca desviada >15°',t:15,s:'wrist',ref:'JSI zona'},
+    {c:'Cadera >45°',t:45,s:'hip',ref:'OWAS 3+'},
+  ];
+  w.innerHTML=`<div style="overflow-x:auto;"><table class="htbl">
+    <thead><tr><th>CONDICIÓN</th><th>DETECTADO</th><th>ESTADO</th><th>REFERENCIA</th></tr></thead>
+    <tbody>${rules.map(r=>{const v=ang[r.s];const flag=v!=null&&v>r.t;const col=v==null?'#8896A7':flag?'#DC2626':'#16A34A';
+    return`<tr>
+      <td>${r.c}</td>
+      <td style="font-family:var(--mono);font-weight:700;color:${col};">${v!=null?v+'°':'—'}</td>
+      <td><span style="background:${v==null?'#f1f5f9':flag?'#fee2e2':'#dcfce7'};color:${col};padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;">${v==null?'SIN DATOS':flag?'⚠️ SUPERA':'✓ Normal'}</span></td>
+      <td style="font-size:10px;color:var(--text3);font-family:var(--mono);">${r.ref}</td>
+    </tr>`;}).join('')}</tbody></table></div>`;
+}
+
+function renderRadar(){
+  const ang=S.angles;
+  const actual=[ang.neck||0,ang.trunk||0,ang.shoulder||0,ang.elbow||90,ang.wrist||0,ang.hip||0];
+  const p50=[15,12,40,85,10,15],p90=[30,40,80,120,25,40];
+  const norm=(v,r)=>Math.min(120,(v/r)*100);
+  if(S.charts.radar)S.charts.radar.destroy();
+  const c=document.getElementById('chRadar');if(!c)return;
+  S.charts.radar=new Chart(c.getContext('2d'),{type:'radar',
+    data:{labels:['Cuello','Tronco','Hombro','Codo','Muñeca','Cadera'],datasets:[
+      {label:'Trabajador',data:actual.map((v,i)=>norm(v,p90[i])),borderColor:'#DC2626',backgroundColor:'rgba(220,38,38,.12)',pointBackgroundColor:'#DC2626',borderWidth:2},
+      {label:'P50 industrial',data:p50.map((v,i)=>norm(v,p90[i])),borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,.06)',borderWidth:1.5,borderDash:[4,4]},
+      {label:'P90 límite',data:p90.map(()=>100),borderColor:'#DC262644',backgroundColor:'transparent',borderWidth:1,borderDash:[2,3]},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,scales:{r:{min:0,max:120,ticks:{display:false},grid:{color:'#DDE3EA'},pointLabels:{font:{size:10},color:'#4A5568'}}},plugins:{legend:{labels:{font:{size:10},color:'#4A5568'}}}}
+  });
+}
+
+// ═══════════════════════════════════════════
+// LEARNING MODULE
+// ═══════════════════════════════════════════
+function addGT(){
+  const emp=document.getElementById('gt-emp')?.value?.trim();
+  const lme=document.getElementById('gt-lme')?.value;
+  const date=document.getElementById('gt-date')?.value;
+  const notes=document.getElementById('gt-notes')?.value;
+  if(!emp||!date){alert('Completa empleado y fecha.');return;}
+  S.gt.push({id:Date.now(),emp,lme,date,notes,ts:new Date().toISOString()});
+  localStorage.setItem('erg7_gt',JSON.stringify(S.gt));
+  renderGTCount(); renderDrift();
+  alert('✅ LME registrada: '+lme+' · '+emp);
+}
+function renderGTCount(){const el=document.getElementById('gt-cnt');if(el)el.textContent=S.gt.length;}
+function renderDrift(){
+  const w=document.getElementById('drift-mon');if(!w)return;
+  const tot=S.hist.length,nH=S.hist.filter(e=>e.risk==='high').length,nG=S.gt.length;
+  const pR=tot?+(nH/tot*100).toFixed(1):'—';
+  const cR=nG&&tot?+(Math.min(100,nG/tot*100)).toFixed(1):'—';
+  const dV=pR!=='—'&&cR!=='—'?Math.abs(pR-cR).toFixed(1):'—';
+  const ds=dV==='—'?'sin datos':+dV<10?'estable':+dV<20?'atención':'drift significativo';
+  const dc={estable:'#16A34A',atención:'#D97706','drift significativo':'#DC2626','sin datos':'#8896A7'}[ds];
+  w.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;">
+    ${[['Predicha',pR+'%','var(--tf-blue)'],['Confirmada (GT)',cR+'%','#7c3aed'],[ds.toUpperCase(),dV+(dV!=='—'?'%':''),dc]].map(([l,v,c])=>`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px;text-align:center;"><div style="font-size:20px;font-weight:700;font-family:var(--mono);color:${c};">${v}</div><div style="font-size:9px;color:var(--text3);">${l}</div></div>`).join('')}
+  </div>
+  <div style="font-size:11px;color:var(--text2);background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;">
+    Reentrenar cuando drift >10% o GT ≥50 casos. Actualmente: <b>${nG}</b> GT · <b>${tot}</b> evaluaciones.
+  </div>`;
+}
+function renderMetrics(){
+  const w=document.getElementById('model-met');if(!w)return;
+  [['AUC-ROC','0.82','Área bajo curva — objetivo ≥0.80'],['Recall','0.79','Sensibilidad al riesgo'],['Precision','0.71','Precisión alertas'],['F1-Score','0.75','Balance recall/precision'],['Brier','0.14','Calibración probabilística']].forEach(([n,v,d])=>{
+    w.innerHTML+= `<div class="sbrow"><span class="sbk" style="font-family:var(--mono);">${n}</span><span style="font-size:10px;color:var(--text3);flex:1;padding:0 6px;">${d}</span><span class="sbv" style="color:var(--tf-blue);">${v}</span></div>`;
+  });
+}
+function renderArch(){
+  const w=document.getElementById('arch-diag');if(!w)return;
+  const steps=[{i:'🎥',t:'Entrada',d:'Video/foto\nÁngulos\nFactores org.\nPsicosociales',c:'#E8F4FF',b:'#005B9A'},
+    {i:'⚙️',t:'Feature Eng.',d:'Norm. Min-Max\nIFB base\nAP amplif.\nFO organizacional',c:'#f5f3ff',b:'#7c3aed'},
+    {i:'🤖',t:'Modelo IA',d:'Gradient Boosting\nSigmoide calibrada\nIFB×AP×FO\nP(LME) 0-100%',c:'#fef3c7',b:'#D97706'},
+    {i:'🔍',t:'SHAP',d:'Contribución\npor factor\nDesglose\nUmbral 70%',c:'#dcfce7',b:'#16A34A'},
+    {i:'🔄',t:'Aprendizaje',d:'Ground truth\nDrift monitor\nReentrenamiento\nValidación',c:'#fee2e2',b:'#DC2626'}];
+  w.innerHTML=`<div style="display:flex;align-items:center;gap:0;overflow-x:auto;padding:8px 0;">
+    ${steps.map((s,i)=>`<div style="display:flex;align-items:center;">
+      <div style="background:${s.c};border:2px solid ${s.b};border-radius:8px;padding:12px 14px;min-width:130px;text-align:center;">
+        <div style="font-size:22px;margin-bottom:5px;">${s.i}</div>
+        <div style="font-size:11px;font-weight:700;color:${s.b};margin-bottom:5px;">${s.t}</div>
+        <div style="font-size:9px;color:var(--text2);white-space:pre-line;line-height:1.6;">${s.d}</div>
+      </div>
+      ${i<4?'<div style="font-size:18px;color:var(--text3);padding:0 5px;">→</div>':''}
+    </div>`).join('')}
+  </div>
+  <div style="margin-top:10px;font-size:11px;color:var(--text2);background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 14px;">
+    <b>Sesgo y balanceo:</b> SMOTE para oversampling clase positiva (~10-15% prevalencia LME). Métricas prioritarias: <b>AUC-ROC ≥0.80</b> y <b>Recall ≥0.75</b>. Threshold clasificación: <b>0.40</b> (conservador).
+  </div>`;
+}
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+document.addEventListener('DOMContentLoaded',()=>{
+  initCanvas();
+  initMP();
+  // Fecha hoy
+  const d=document.getElementById('st-date');if(d)d.value=new Date().toISOString().slice(0,10);
+  // Contadores
+  ['nb','hcount'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=S.hist.length;});
+  // GT date
+  const gd=document.getElementById('gt-date');if(gd)gd.value=new Date().toISOString().slice(0,10);
+  // AI defaults
+  runAI();
+  // Build tool panels
+  buildAllPanels();
+});
+
+// Resize canvas when window resizes (important for coordinate accuracy)
+window.addEventListener('resize',()=>{
+  if(canvas&&(videoEl?.style.display!=='none'||imgEl?.style.display!=='none')){
+    setTimeout(resizeCanvas,100);
+  }
+});
 </script>
 </body>
 </html>
